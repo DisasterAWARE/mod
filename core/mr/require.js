@@ -1871,7 +1871,7 @@ function locationByRemovingLastURLComponentKeepingSlash(location) {
                         object._montage_metadata.aliases.push(name);
                         //object._montage_metadata.objectName = name;
                         //jshint +W106
-                    } else if ((typeof object.getInfoForObject === "function" || typeof object.constructor.getInfoForObject === "function" ) && !_Object.isSealed(object)) {
+                    } else if ((typeof object.getInfoForObject === "function" || typeof object.constructor.getInfoForObject === "function" || (typeof object === "function" && object.prototype && typeof object.prototype.getInfoForObject === "function")) && !_Object.isSealed(object)) {
 
                         // object._montage_metadata = new MontageMetadata(
                         //     require,
