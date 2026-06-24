@@ -117,6 +117,14 @@ if (Object.prototype.hasOwnProperty('isEmpty') === false) {
             for(let prop in this) return false;
             return true;
         },
+        set: function (value) {
+            Object.defineProperty(this, "isEmpty", {
+                value: value,
+                writable: true,
+                configurable: true,
+                enumerable: true
+            });
+        },
         configurable: true,
         enumerable: false
     });
