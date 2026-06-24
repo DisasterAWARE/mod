@@ -562,6 +562,14 @@ Object.defineProperty(Array.prototype, "isEmpty", {
         }
         return true;
     },
+    set: function (value) {
+        Object.defineProperty(this, "isEmpty", {
+            value: value,
+            writable: true,
+            configurable: true,
+            enumerable: true
+        });
+    },
     configurable: true,
     enumerable: false
 });

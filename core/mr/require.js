@@ -2061,7 +2061,7 @@ function locationByRemovingLastURLComponentKeepingSlash(location) {
         return function reelLoader(id, module) {
             if (id.endsWith(dotREEL)) {
                 //if(module.require.config.name === "mod" || module.require.config.name === "montage") {
-                if(id.startsWith("mod") || id.startsWith("montage")) {
+                if(id.startsWith("mod/") || id.startsWith("montage/")) {
                         module.redirect = `${id.substr(0,id.length-4)}${mod}/${reelExpression.exec(id)[1]}`;
                     module.extension = mod;
                     return module;
