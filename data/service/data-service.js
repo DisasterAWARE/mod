@@ -1100,8 +1100,69 @@ DataService.addClassProperties(
         objectDescriptorForType: {
             value: function (type) {
                 var descriptor =
-                    this._constructorToObjectDescriptorMap.get(type) ||
-                    (typeof type === "string" && this._moduleIdToObjectDescriptorMap[type]);
+                        this._constructorToObjectDescriptorMap.get(type) ||
+                        (typeof type === "string" && this._moduleIdToObjectDescriptorMap[type]),
+                    info,
+                    moduleId,
+                    moduleKeys,
+                    typeName,
+                    candidate,
+                    candidateModuleId,
+                    candidates,
+                    i,
+                    countI;
+
+                if (!descriptor && typeof type === "function") {
+                    try {
+                        info = Montage.getInfoForObject(type);
+                    } catch (error) {
+                        info = null;
+                    }
+
+                    if (info && info.moduleId && info.objectName) {
+                        // Descriptors can be registered by module id before their constructors are cached.
+                        moduleId = info.moduleId + "/" + info.objectName;
+                        descriptor = this._moduleIdToObjectDescriptorMap[moduleId];
+                    }
+
+                    if (!descriptor) {
+                        candidates = [];
+                        moduleKeys = Object.keys(this._moduleIdToObjectDescriptorMap);
+                        for (i = 0, countI = moduleKeys.length; i < countI; i++) {
+                            candidate = this._moduleIdToObjectDescriptorMap[moduleKeys[i]];
+                            if (candidate && candidates.indexOf(candidate) === -1) {
+                                candidates.push(candidate);
+                            }
+                        }
+                        for (i = 0, countI = this._childServiceTypes.length; i < countI; i++) {
+                            candidate = this._childServiceTypes[i];
+                            if (candidate && candidates.indexOf(candidate) === -1) {
+                                candidates.push(candidate);
+                            }
+                        }
+
+                        typeName = info && info.objectName || type.name;
+                        for (i = 0, countI = candidates.length; i < countI; i++) {
+                            candidate = candidates[i];
+                            candidateModuleId = candidate && candidate.module && candidate.module.id &&
+                                    candidate.exportName && candidate.module.id + "/" + candidate.exportName;
+
+                            if (moduleId && candidateModuleId &&
+                                    (moduleId === candidateModuleId ||
+                                    moduleId.endsWith("/" + candidateModuleId) ||
+                                    candidateModuleId.endsWith("/" + moduleId)) ||
+                                    typeName && candidate &&
+                                    (candidate.name === typeName || candidate.exportName === typeName)) {
+                                descriptor = candidate;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (descriptor) {
+                        this._constructorToObjectDescriptorMap.set(type, descriptor);
+                    }
+                }
 
                 return descriptor || type;
             },
