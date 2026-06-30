@@ -38,7 +38,7 @@ const CountedSet = exports.CountedSet = class CountedSet extends Set {
     }
 
     delete(value) {
-        var currentCount = (this?.__contentCount.get(value) || (this.has(value) ? 1 : 0));
+        var currentCount = (this.__contentCount?.get(value) || (this.has(value) ? 1 : 0));
 
         if(currentCount) {
             this._contentCount.set(value,--currentCount);
