@@ -73,6 +73,9 @@ const RawDataService = exports.RawDataService = class RawDataService extends Dat
              * @default null
              */
             _identityQuery: { value: null}
+            ,
+
+            supportsDataOperation: { value: false }
         });
     }
 
@@ -80,10 +83,7 @@ const RawDataService = exports.RawDataService = class RawDataService extends Dat
     constructor() {
         super();
 
-        this._typeIdentifierMap = new Map();
-        this._descriptorToRawDataTypeMappings = new Map();
-        this._rawDataTypeIdentificationCriteriaByType = new Map();
-        this._defaultRawDataTypeIdentificationCriteriaByType = new Map();
+        this._ensureRawDataServiceMaps();
 
         if (this.supportsDataOperation) {
             this.addEventListener(DataOperation.Type.ReadUpdateOperation, this, false);
@@ -410,6 +410,7 @@ RawDataService.addClassProperties({
     deserializeSelf: {
         value: function (deserializer) {
             this.super(deserializer);
+            this._ensureRawDataServiceMaps();
             var value = deserializer.getProperty("rawDataTypeMappings");
             this._registerRawDataTypeMappings(value || []);
 
@@ -446,6 +447,24 @@ RawDataService.addClassProperties({
 
             
 
+        }
+    },
+
+
+    _ensureRawDataServiceMaps: {
+        value: function () {
+            if (!this._typeIdentifierMap) {
+                this._typeIdentifierMap = new Map();
+            }
+            if (!this._descriptorToRawDataTypeMappings) {
+                this._descriptorToRawDataTypeMappings = new Map();
+            }
+            if (!this._rawDataTypeIdentificationCriteriaByType) {
+                this._rawDataTypeIdentificationCriteriaByType = new Map();
+            }
+            if (!this._defaultRawDataTypeIdentificationCriteriaByType) {
+                this._defaultRawDataTypeIdentificationCriteriaByType = new Map();
+            }
         }
     },
 
@@ -568,22 +587,36 @@ RawDataService.addClassProperties({
                     -> https://www.stackovercloud.com/2020/06/30/amazon-rds-proxy-now-generally-available/
                 */
 
-                // console.log(this.name+" connection getter: this.connectionIdentifer is ",this.connectionIdentifer);
+                // console.log(this.name+" connection getter: this.connectionIdentifier is ",this.connectionIdentifier);
                 // console.log(this.name+" connection getter: this.currentEnvironment is ",this.currentEnvironment);
                 // console.log(this.name+" connection getter: this.currentEnvironment.isGCP is ",this.currentEnvironment.isGCP);
                 // console.log(this.name+" connection getter: this.currentEnvironment.isCloud is ",this.currentEnvironment.isCloud);
                 // console.log(this.name+" connection getter: this.currentEnvironment.stage is ",this.currentEnvironment.stage);
 
-                //If we have an connectionIdentifer, we go for it, otherwise we go for a stage-based logic
-                if(this.connectionIdentifer) {
-                    this.connection = this.connectionForIdentifier(this.connectionIdentifer);
+                //If we have an connectionIdentifier, we go for it, otherwise we go for a stage-based logic
+                if(this.connectionIdentifier) {
+                    this.connection = this.connectionForIdentifier(this.connectionIdentifier);
                 }
                 else if(!this.currentEnvironment.isCloud) {
-                    let connection = this.connectionForIdentifier(`local-${this.currentEnvironment.stage}`);
+                    let stage = this.currentEnvironment.stage,
+                        connection = this.connectionForIdentifier(`local-${stage}`);
 
                     //If we can't find a local specific one, we'll look for the one for this.currentEnvironment.stage
                     if(!connection) {
-                        connection = this.connectionForIdentifier(this.currentEnvironment.stage);
+                        connection = this.connectionForIdentifier(stage);
+                    }
+
+                    /*
+                        Montage-era applications commonly declare local/browser
+                        connection identifiers while Mod's local environment stage
+                        is "mod". Keep local Mod runs compatible with those
+                        descriptors without requiring every legacy service to add
+                        a duplicate "mod" connection.
+                    */
+                    if(!connection && stage === "mod") {
+                        connection = this.connectionForIdentifier("local") ||
+                            this.connectionForIdentifier("local-browser") ||
+                            this.connectionForIdentifier("browser");
                     }
                     this.connection = connection;
                     
@@ -596,7 +629,7 @@ RawDataService.addClassProperties({
                     if(this.connectionDescriptor) {
                         this.connection = this.connectionDescriptor;
                     } else {
-                        throw "RawDataService "+ (this.name || this.identifier) + " could not find a connection for "+this.currentEnvironment.stage+" environment";
+                        this.connection = null;
                     }
                 }
 
@@ -621,7 +654,7 @@ RawDataService.addClassProperties({
 
     accessTokenDescriptor: {
         get: function () {
-            return this.connection.accessTokenDescriptor;
+            return this.connection?.accessTokenDescriptor;
         }
     },
     
@@ -798,8 +831,15 @@ RawDataService.addClassProperties({
                 //return service.objectWithDescriptorMatchingRawDataPrimaryKeyCriteria(typeToFetch, criteria);
 
 
-                var propertyNameQuery = DataQuery.withTypeAndCriteria(objectDescriptor, self.rawCriteriaForObject(object, objectDescriptor)),
+                var rawCriteria = self.rawCriteriaForObject(object, objectDescriptor),
+                    propertyNameQuery,
                     objectSnapshot = this.snapshotForObject(object);
+
+                if (!rawCriteria) {
+                    return Promise.resolve(null);
+                }
+
+                propertyNameQuery = DataQuery.withTypeAndCriteria(objectDescriptor, rawCriteria);
 
                 propertyNameQuery.criteria.name = "rawDataPrimaryKeyCriteria";
                 propertyNameQuery.hints = {rawDataService: this};
@@ -974,7 +1014,14 @@ RawDataService.addClassProperties({
                         return Promise.resolve(null);
                     } else {
 
-                        var propertyNameQuery = DataQuery.withTypeAndCriteria(objectDescriptor, self.rawCriteriaForObject(object, objectDescriptor));
+                        var rawCriteria = self.rawCriteriaForObject(object, objectDescriptor),
+                            propertyNameQuery;
+
+                        if (!rawCriteria) {
+                            return Promise.resolve(null);
+                        }
+
+                        propertyNameQuery = DataQuery.withTypeAndCriteria(objectDescriptor, rawCriteria);
 
                         propertyNameQuery.readExpressions = [propertyName];
 
@@ -1125,7 +1172,7 @@ RawDataService.addClassProperties({
     resetDataObject: {
         value: function (object) {
             var snapshot = this.snapshotForObject(object),
-                result = this.mapRawDataToObject(snapshot, object);
+                result = this._mapRawDataToObject(snapshot, object);
             return result || Promise.resolve(object);
         }
     },
@@ -1432,7 +1479,7 @@ RawDataService.addClassProperties({
                 this.recordSnapshot(this.dataIdentifierForObject(object), rawData);
             }
 
-            result = this.mapRawDataToObject(rawData, object, context, readExpressions);
+            result = this._mapRawDataToObject(rawData, object, context, readExpressions, false, type);
 
             if (this._isAsync(result)) {
                 result = result.then( (resultValue) => {
@@ -1548,7 +1595,7 @@ RawDataService.addClassProperties({
             */
             // this.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
 
-            result = this.mapRawDataToObject(rawData, object, context);
+            result = this._mapRawDataToObject(rawData, object, context, undefined, false, type);
 
             // //Record snapshot when done mapping
             // this.recordSnapshot(dataIdentifier, rawData);
@@ -1571,8 +1618,11 @@ RawDataService.addClassProperties({
             // return this.rootService.objectForDataIdentifier(dataIdentifier) ||
             //         this.getDataObject(type, rawData, dataIdentifier, context);
 
+            if (dataIdentifier && typeof dataIdentifier !== "object") {
+                dataIdentifier = undefined;
+            }
 
-            var object = this.rootService.objectForDataIdentifier(dataIdentifier);
+            var object = dataIdentifier ? this.rootService.objectForDataIdentifier(dataIdentifier) : null;
 
             //Consolidation, recording snapshot even if we already had an object
             //Record snapshot before we may create an object
@@ -1582,7 +1632,9 @@ RawDataService.addClassProperties({
             if (!object) {
                 //iDataIdentifier argument should be all we need later on
                 object = this.getDataObject(type, rawData, dataIdentifier, context);
-                this.recordDataIdentifierForObject(dataIdentifier, object);
+                if (dataIdentifier) {
+                    this.recordDataIdentifierForObject(dataIdentifier, object);
+                }
             }
             return object;
 
@@ -1724,7 +1776,7 @@ RawDataService.addClassProperties({
         value: function (type, rawData, dataOperation) {
             var mapping = this.mappingForType(type),
                 rawDataPrimaryKeys = mapping ? mapping.rawDataPrimaryKeyCompiledExpressions : null,
-                scope = dataOperation?.scope.nest(rawData) || new Scope(rawData),
+                scope = dataOperation?.scope ? dataOperation.scope.nest(rawData) : new Scope(rawData),
                 rawDataPrimaryKeysValues,
                 dataIdentifier, dataIdentifierMap, primaryKey;
 
@@ -1768,7 +1820,7 @@ RawDataService.addClassProperties({
         value: function (type, rawData, dataOperation) {
             var primaryKey = this.primaryKeyForTypeRawData(type, rawData, dataOperation);
 
-            if (primaryKey) {
+            if (primaryKey !== undefined && primaryKey !== null) {
                 return this.dataIdentifierForTypePrimaryKey(type, primaryKey);
             } else {
                 var mapping = this.mappingForType(type);
@@ -2497,9 +2549,15 @@ RawDataService.addClassProperties({
 
      */
     mapRawDataToObject: {
-        value: function (record, object, context, readExpressions, registerMappedPropertiesAsChanged = false) {
+        value: function (rawData, object, context) {
+            return this.mapFromRawData(object, rawData, context);
+        }
+    },
+
+    _mapRawDataToObject: {
+        value: function (record, object, context, readExpressions, registerMappedPropertiesAsChanged = false, objectDescriptor) {
             var self = this,
-                mapping = this.mappingForObject(object),
+                mapping = objectDescriptor && this.mappingForType(objectDescriptor) || this.mappingForObject(object),
                 snapshot,
                 result;
 
@@ -3239,7 +3297,7 @@ RawDataService.addClassProperties({
             else {
                 let snapshot = this._snapshot,
                     snapshotDataIdentifierKeys = this._snapshot.keysArray(),
-                    mainService = this.mainService,
+                    mainService = this.mainService || this.rootService,
                     result;
                 for(let i=0, countI = snapshotDataIdentifierKeys.length, iSnapshotDataIdentifierKey, iSnapshot, iObject; (i < countI); i++) {
                     iSnapshotDataIdentifierKey = snapshotDataIdentifierKeys[i];

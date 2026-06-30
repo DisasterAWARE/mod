@@ -178,13 +178,13 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
                     if(!fetchPromise) {
 
                         /* HACK BEGIN - TO GET originId sent in DataOperation without impacting main postgreSQL path */
-                        var sourceType = currentRule.propertyDescriptor.owner,
-                            mapping = service.mappingForType(sourceType),
-                            rawDataPrimaryKeys = mapping.rawDataPrimaryKeys,
+                        var sourceType = currentRule && currentRule.propertyDescriptor && currentRule.propertyDescriptor.owner,
+                            mapping = sourceType && service.mappingForType(sourceType),
+                            rawDataPrimaryKeys = mapping && mapping.rawDataPrimaryKeys,
                             dataIdentifier,
                             sourceObjectSnapshot;
 
-                        if(rawDataPrimaryKeys.has(currentRule.sourcePath) && service.addsOriginIdToReadOperationContext) {
+                        if(rawDataPrimaryKeys && rawDataPrimaryKeys.has(currentRule.sourcePath) && service.addsOriginIdToReadOperationContext) {
                             if(typeof criteria.parameters === "string") {
                                 dataIdentifier = service.dataIdentifierForTypePrimaryKey(sourceType,criteria.parameters);
                             } else {
@@ -212,15 +212,28 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
                             query.hints.registerMappedPropertiesAsChanged = registerMappedPropertiesAsChanged;
                         }
 
-                        if(sourceObjectSnapshot?.originDataSnapshot) {
+                        if(sourceObjectSnapshot && sourceObjectSnapshot.originDataSnapshot) {
                             query.hints.originDataSnapshot = sourceObjectSnapshot.originDataSnapshot;
                         }
 
                         /*
                             Sounds twisted, but this is to deal with the case where we need to fetch to resolve a property of the object itself.
                         */
-                        if(((currentRule && (!currentRule.propertyDescriptor._valueDescriptorReference || !currentRule.propertyDescriptor.valueDescriptor)) && !(queryParts.readExpressions.includes(currentRule.targetPath))) || (currentRule.propertyDescriptor._valueDescriptorReference === currentRule.propertyDescriptor.owner)) {
+                        if(currentRule && currentRule.propertyDescriptor && (((!currentRule.propertyDescriptor._valueDescriptorReference || !currentRule.propertyDescriptor.valueDescriptor) && !(query.readExpressions && query.readExpressions.includes(currentRule.targetPath))) || (currentRule.propertyDescriptor._valueDescriptorReference === currentRule.propertyDescriptor.owner))) {
                             query.readExpressions = [currentRule.targetPath];
+                        }
+
+                        if (typeof document !== "undefined" && document.documentElement && currentRule && currentRule.targetPath === "preferences") {
+                            document.documentElement.setAttribute("data-preferences-foreign-fetch", JSON.stringify({
+                                stage: "fetch",
+                                type: typeToFetch && typeToFetch.name,
+                                criteria: criteria && criteria.expression,
+                                parameterKeys: criteria && criteria.parameters ? Object.keys(criteria.parameters) : [],
+                                ownerType: criteria && criteria.parameters && criteria.parameters.ownerType,
+                                id: criteria && criteria.parameters && criteria.parameters.id,
+                                hasOwner: !!(criteria && criteria.parameters && criteria.parameters.owner),
+                                readExpressions: query.readExpressions
+                            }));
                         }
 
                     /*
@@ -305,6 +318,12 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
                         fetchPromise = service.rootService.fetchData(query)
                                 .then(function(value) {
+                                    if (typeof document !== "undefined" && document.documentElement && currentRule && currentRule.targetPath === "preferences") {
+                                        document.documentElement.setAttribute("data-preferences-foreign-fetch", JSON.stringify({
+                                            stage: "fetched",
+                                            count: value && value.length
+                                        }));
+                                    }
                                     self._unregisterFetchPromiseForObjectDescriptorCriteria(typeToFetch, criteria);
                                     return value;
                                 });
@@ -486,6 +505,14 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
             query.hints = {rawDataService: service};
 
+            if (typeof document !== "undefined" && document.documentElement) {
+                document.documentElement.setAttribute("data-raw-foreign-stage", JSON.stringify({
+                    stage: "fetch",
+                    type: type && type.name,
+                    criteria: combinedCriteria && combinedCriteria.expression,
+                    readExpressions: queryParts.readExpressions
+                }));
+            }
 
             if(queryParts.readExpressions && queryParts.readExpressions.length > 0) {
                 query.readExpressions = queryParts.readExpressions;
@@ -499,6 +526,13 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
             mapIterationFetchPromise = rootService.fetchData(query)
             .then(function(combinedFetchedValues) {
+                if (typeof document !== "undefined" && document.documentElement) {
+                    document.documentElement.setAttribute("data-raw-foreign-stage", JSON.stringify({
+                        stage: "fetched",
+                        type: type && type.name,
+                        count: combinedFetchedValues && combinedFetchedValues.length
+                    }));
+                }
                 /*
                     value contains all the instances matching any of the combined criteria. Each criteria is expressed in term of raw data, so we need to evaluate it on the snapshots of these objects.
 
@@ -781,7 +815,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
                     // console.log("RawForeignValueToObjectConverter fetching for value:",v);
 
-                    return this._descriptorToFetch.then(function (typeToFetch) {
+                    return Promise.resolve(this._descriptorToFetch).then(function (typeToFetch) {
 
                         return self._fetchConvertedDataForObjectDescriptorCriteria(typeToFetch, criteria, currentRule, registerMappedPropertiesAsChanged);
 

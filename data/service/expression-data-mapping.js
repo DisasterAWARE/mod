@@ -1271,7 +1271,13 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                 readCompletedOperation = context instanceof DataOperation
                     ? context
                     : mappingScope.root.child.value, 
-                refreshesRefetchedInstances = !!readCompletedOperation.referrer.dataStream?.query.refreshesRefetchedInstances;
+                refreshesRefetchedInstances = !!(
+                    readCompletedOperation &&
+                    readCompletedOperation.referrer &&
+                    readCompletedOperation.referrer.dataStream &&
+                    readCompletedOperation.referrer.dataStream.query &&
+                    readCompletedOperation.referrer.dataStream.query.refreshesRefetchedInstances
+                );
 
             /*
                 If data is null and we have readExpressions, which are object-level, we go on and set those.
@@ -1404,7 +1410,7 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                                 const targetPath = aRule.targetPath,
                                         propertyDescriptor = aRule.propertyDescriptor;
                                 result = result.then((resultValue) => {
-                                    this._registerMappedPropertyValueAsChangesForCreatedObject(targetPath, resultValue, (changesForDataObject || (changesForDataObject = service.changesForDataObject(object))), object, (mainService || (mainService = service.mainService)));      
+                                    this._registerMappedPropertyValueAsChangesForCreatedObject(targetPath, resultValue, (changesForDataObject || (changesForDataObject = service.changesForDataObject(object))), object, (mainService || (mainService = service.mainService || service.rootService)));
                                     /*
                                         Tell our service: mappingDidMapRawDataToObjectPropertyValue
                                     */
@@ -1414,7 +1420,7 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                                     return resultValue;
                                 });
                             } else {
-                                this._registerMappedPropertyValueAsChangesForCreatedObject(aRule.targetPath, result, (changesForDataObject || (changesForDataObject = service.changesForDataObject(object))), object, (mainService || (mainService = service.mainService)));
+                                this._registerMappedPropertyValueAsChangesForCreatedObject(aRule.targetPath, result, (changesForDataObject || (changesForDataObject = service.changesForDataObject(object))), object, (mainService || (mainService = service.mainService || service.rootService)));
                                 /*
                                     Tell our service: mappingDidMapRawDataToObjectPropertyValue
                                 */
@@ -1438,7 +1444,7 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
     },
 
     _registerMappedPropertyValueAsChangesForCreatedObject: {
-        value: function(mappedProperty, value, objectChanges, createdObject, _mainService = this.service.mainService) {
+        value: function(mappedProperty, value, objectChanges, createdObject, _mainService = this.service.mainService || this.service.rootService) {
             /*
                 If the object is created and we're mapping it, we need to record values set as changes
                 so will be saved properly.
@@ -1449,7 +1455,7 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                 If there's a value, we attempt to merge it. mergeDataObject takes care of deciding if value
                 is a DataObject worth tracking
             */
-            if(value) {
+            if(value && _mainService) {
                 _mainService.mergeDataObject(value);
             }
     
@@ -1669,6 +1675,20 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                 propertyScope,
                 locales,
                 debug = DataService.debugProperties.has(propertyName) || (rule && rule.debug === true);
+
+            if (typeof document !== "undefined" && document.documentElement && propertyName === "roles") {
+                document.documentElement.setAttribute("data-expression-roles-stage", JSON.stringify({
+                    stage: "property",
+                    hasRule: !!rule,
+                    hasConverter: !!(rule && rule.converter),
+                    hasPropertyDescriptor: !!propertyDescriptor,
+                    propertyDescriptorName: propertyDescriptor && propertyDescriptor.name,
+                    hasValueDescriptor: !!propertyDescriptorValueDescriptor,
+                    valueDescriptorName: propertyDescriptorValueDescriptor && propertyDescriptorValueDescriptor.name,
+                    isRelationship: !!isRelationship,
+                    isDerived: !!isDerived
+                }));
+            }
 
 
             //Simplistic and potentially wrong, but if there's no properties on data for that rule, then there's no point doing it
@@ -3019,7 +3039,7 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                     converter._foreignDescriptorSetByMapping = true;
                 }
 
-                if(converter._foreignDescriptorSetByMapping) {
+                if(converter._foreignDescriptorSetByMapping && propertyDescriptor) {
                     converter.foreignDescriptor = propertyDescriptor.valueDescriptor;
                 }
                 // converter.foreignDescriptor = converter.foreignDescriptor || propertyDescriptor.valueDescriptor;

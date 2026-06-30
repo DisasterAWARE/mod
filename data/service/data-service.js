@@ -44,6 +44,12 @@ AuthorizationPolicyType.UpfrontAuthorizationPolicy = AuthorizationPolicy.UP_FRON
 AuthorizationPolicyType.OnDemandAuthorizationPolicy = AuthorizationPolicy.ON_DEMAND;
 AuthorizationPolicyType.OnFirstFetchAuthorizationPolicy = AuthorizationPolicy.ON_FIRST_FETCH;
 
+var AuthenticationPolicyType = new Montage();
+AuthenticationPolicyType.NoAuthenticationPolicy = AuthenticationPolicy.NONE;
+AuthenticationPolicyType.UpfrontAuthenticationPolicy = AuthenticationPolicy.UP_FRONT;
+AuthenticationPolicyType.OnDemandAuthenticationPolicy = AuthenticationPolicy.ON_DEMAND;
+AuthenticationPolicyType.OnFirstFetchAuthenticationPolicy = AuthenticationPolicy.ON_FIRST_FETCH;
+
 AuthenticationPolicy.NoAuthenticationPolicy = AuthenticationPolicy.NONE;
 AuthenticationPolicy.UpfrontAuthenticationPolicy = AuthenticationPolicy.UP_FRONT;
 AuthenticationPolicy.OnDemandAuthenticationPolicy = AuthenticationPolicy.ON_DEMAND;
@@ -372,7 +378,13 @@ DataService.addClassProperties(
                 }
 
                 if (this.authorizationPolicy === AuthorizationPolicyType.UpfrontAuthorizationPolicy) {
-                    exports.DataService.authorizationManager.registerServiceWithUpfrontAuthorizationPolicy(this);
+                    var self = this;
+                    this.authorizationPromise = exports.DataService.authorizationManager
+                        .authorizeService(this)
+                        .then(function (authorization) {
+                            self.authorization = authorization;
+                            return authorization;
+                        });
                 }
             },
         },
@@ -680,9 +692,23 @@ DataService.addClassProperties(
                     i,
                     n,
                     nIfEmpty = 1,
-                    isNotParentService;
+                    isNotParentService,
+                    service;
 
                 types = types || (child.model && child.model.objectDescriptors) || child.types;
+
+                if (child === this) {
+                    throw new Error("DataService cannot be added as a child of itself.");
+                }
+
+                service = this;
+                while (service) {
+                    if (service === child) {
+                        throw new Error("DataService child registration would create a parent-service cycle.");
+                    }
+                    service = service._parentService;
+                }
+
                 isNotParentService = child._parentService !== this;
                 // If the new child service already has a parent, remove it from
                 // that parent.
@@ -1078,6 +1104,12 @@ DataService.addClassProperties(
                     (typeof type === "string" && this._moduleIdToObjectDescriptorMap[type]);
 
                 return descriptor || type;
+            },
+        },
+
+        _objectDescriptorForType: {
+            value: function (type) {
+                return this.objectDescriptorForType(type);
             },
         },
 
@@ -2408,18 +2440,31 @@ DataService.addClassProperties(
         fetchObjectProperty: {
             value: function (object, propertyName, isObjectCreated, isUpdate) {
                 var childServices = this.childServicesForType(object.objectDescriptor),
-                    isHandler =
+                    handlesType =
                         /*(this.parentService && this.parentService._getChildServiceForObject(object) === this)*/ this.handlesType(
                             object.objectDescriptor
-                        ) &&
-                        (!childServices || (childServices && childServices.length == 0)),
-                    useDelegate = isHandler && typeof this.fetchRawObjectProperty === "function",
-                    delegateFunction = !useDelegate && isHandler && this._delegateFunctionForPropertyName(propertyName),
+                        ),
+                    hasPropertyDescriptorLookup = typeof this._propertyDescriptorForObjectAndName === "function",
+                    hasMappingLookup = typeof this.mappingForType === "function",
+                    mapping = handlesType && hasMappingLookup && this.mappingForType(object.objectDescriptor),
+                    mappingRule = mapping && mapping.objectMappingRuleForPropertyName(propertyName),
                     propertyDescriptor =
-                        !useDelegate &&
-                        !delegateFunction &&
-                        isHandler &&
-                        this._propertyDescriptorForObjectAndName(object, propertyName),
+                        hasPropertyDescriptorLookup &&
+                            this._propertyDescriptorForObjectAndName(object, propertyName) ||
+                        object.objectDescriptor && object.objectDescriptor.propertyDescriptorForName(propertyName) ||
+                        mappingRule && mappingRule.propertyDescriptor,
+                    isRelationshipProperty = !!(propertyDescriptor && propertyDescriptor._valueDescriptorReference),
+                    hasFetchRawObjectProperty = typeof this.fetchRawObjectProperty === "function",
+                    localDelegateFunction = this._delegateFunctionForPropertyName(propertyName),
+                    canMapObjectPropertyLocally = !!mappingRule &&
+                        typeof this.snapshotForObject === "function" &&
+                        typeof this.mapObjectToRawData === "function",
+                    shouldHandleLocally = handlesType &&
+                        (hasFetchRawObjectProperty || localDelegateFunction || canMapObjectPropertyLocally) &&
+                        (!childServices || childServices.length === 0 || (mappingRule && !mappingRule.serviceIdentifier)),
+                    isHandler = shouldHandleLocally,
+                    useDelegate = isHandler && hasFetchRawObjectProperty && !isRelationshipProperty,
+                    delegateFunction = !useDelegate && isHandler && localDelegateFunction,
                     childService = !isHandler && this._getChildServiceForObject(object),
                     isObjectCreated = this.isObjectCreated(object),
                     debug = exports.DataService.debugProperties.has(propertyName);
@@ -2432,6 +2477,48 @@ DataService.addClassProperties(
                             propertyName +
                             ", set a breakpoint here."
                     );
+                }
+                if (propertyName === "preferences" && typeof document !== "undefined" && document.documentElement) {
+                    var objectDescriptor = object.objectDescriptor,
+                        directPropertyDescriptor = objectDescriptor &&
+                            objectDescriptor.propertyDescriptorForName &&
+                            objectDescriptor.propertyDescriptorForName(propertyName),
+                        propertyNames = objectDescriptor && objectDescriptor.propertyDescriptors &&
+                            objectDescriptor.propertyDescriptors.map(function (descriptor) {
+                                return descriptor && descriptor.name;
+                            });
+                    document.documentElement.setAttribute("data-preferences-fetch-object-property", JSON.stringify({
+                        service: this.name || this.identifier,
+                        objectDescriptorName: objectDescriptor && objectDescriptor.name,
+                        objectDescriptorModule: objectDescriptor && objectDescriptor.module && objectDescriptor.module.id,
+                        directPropertyDescriptorName: directPropertyDescriptor && directPropertyDescriptor.name,
+                        propertyNames: propertyNames,
+                        handlesType: !!handlesType,
+                        hasMappingLookup: !!hasMappingLookup,
+                        canMapObjectPropertyLocally: !!canMapObjectPropertyLocally,
+                        isRelationshipProperty: !!isRelationshipProperty,
+                        useDelegate: !!useDelegate,
+                        childServiceCount: childServices && childServices.length || 0,
+                        childServices: childServices && childServices.map(function (service) {
+                            return service.name || service.identifier;
+                        }),
+                        hasMappingRule: !!mappingRule,
+                        serviceIdentifier: mappingRule && mappingRule.serviceIdentifier,
+                        shouldHandleLocally: !!shouldHandleLocally,
+                        hasDelegateFunction: !!delegateFunction,
+                        hasPropertyDescriptor: !!propertyDescriptor
+                    }));
+                }
+
+                if (
+                    handlesType &&
+                    propertyDescriptor &&
+                    !isRelationshipProperty &&
+                    !mappingRule &&
+                    !delegateFunction &&
+                    !hasFetchRawObjectProperty
+                ) {
+                    return this.nullPromise;
                 }
 
                 return useDelegate
@@ -2455,12 +2542,22 @@ DataService.addClassProperties(
 
         childServicesFetchObjectProperty: {
             value: function (object, propertyName, isObjectCreated, isUpdate) {
+                var dataIdentifierService = object.dataIdentifier && object.dataIdentifier.dataService,
+                    childServices = this.childServicesForType(object.objectDescriptor),
+                    serviceIdentifiers = childServices && childServices.map(function (service) {
+                        return service.identifier;
+                    });
                 //Workaround for now:
-                if (object.dataIdentifier.dataService) {
-                    return object.dataIdentifier.dataService.fetchObjectProperty(object, propertyName, isObjectCreated, isUpdate);
+                if (dataIdentifierService && dataIdentifierService !== this) {
+                    return dataIdentifierService.fetchObjectProperty(object, propertyName, isObjectCreated, isUpdate);
                 }
 
-                throw "Data Services with multiple child services per ObjectDescriptor have to implement this method";
+                throw new Error("Data Services with multiple child services per ObjectDescriptor have to implement this method. objectDescriptor=" +
+                    (object.objectDescriptor && object.objectDescriptor.name) +
+                    ", propertyName=" + propertyName +
+                    ", service=" + this.identifier +
+                    ", dataIdentifierService=" + (dataIdentifierService && dataIdentifierService.identifier) +
+                    ", childServices=" + serviceIdentifiers);
                 //     /*
                 //         If there's more than one, we're entering the realm of decisions about how to deal with them.
                 //         That's why MuxDataService's and it's subclasses were created, to implement the various possible strategies.
@@ -2866,17 +2963,18 @@ DataService.addClassProperties(
             value: function (object) {
                 //If we don't have a local / native one, we return the one assigned by the main service
                 //let dataIdentifier = this._dataIdentifierByObject.get(object) || object.dataIdentifier;
-                let dataIdentifier = this._dataIdentifierByObject.get(object);
+                let dataIdentifier = this._dataIdentifierByObject.get(object),
+                    mainService = this.mainService || this.rootService;
 
                 //When we merge in a graph of data object's it's possible that those objects are
-                if (!dataIdentifier && this !== this.mainService) {
-                    dataIdentifier = this.mainService.dataIdentifierForObject(object);
+                if (!dataIdentifier && this !== mainService) {
+                    dataIdentifier = mainService.dataIdentifierForObject(object);
                     if (!dataIdentifier) {
                         // throw "No dataIdentifier found for data object: "+object;
                         dataIdentifier = this.createDataIdentifierForObject(object);
-                        if (this.parentService === this.mainService) {
-                            this.mainService.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
-                            this.mainService.recordDataIdentifierForObject(dataIdentifier, object);
+                        if (this.parentService === mainService) {
+                            mainService.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
+                            mainService.recordDataIdentifierForObject(dataIdentifier, object);
                         }
                     }
                     this.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
@@ -2975,7 +3073,9 @@ DataService.addClassProperties(
          */
         recordObjectForDataIdentifier: {
             value: function (object, dataIdentifier) {
-                this._objectByDataIdentifier.set(dataIdentifier, object);
+                if (dataIdentifier && typeof dataIdentifier === "object") {
+                    this._objectByDataIdentifier.set(dataIdentifier, object);
+                }
             },
         },
 
@@ -3184,13 +3284,13 @@ DataService.addClassProperties(
 
         registerDataObject: {
             value: function (aDataObject) {
-                this.registeredObjectsForObjectDescriptor(aDataObject.objectDescriptor).push(aDataObject);
+                this.registeredObjectsForObjectDescriptor(this.objectDescriptorForObject(aDataObject)).push(aDataObject);
             },
         },
 
         unregisterDataObject: {
             value: function (aDataObject) {
-                this.registeredObjectsForObjectDescriptor(aDataObject.objectDescriptor).delete(aDataObject);
+                this.registeredObjectsForObjectDescriptor(this.objectDescriptorForObject(aDataObject)).delete(aDataObject);
             },
         },
 
@@ -3211,20 +3311,25 @@ DataService.addClassProperties(
         _createDataObject: {
             value: function (type, dataIdentifier) {
                 var objectDescriptor = this.objectDescriptorForType(type),
-                    object = Object.create(this._getPrototypeForType(objectDescriptor)),
-                    dataIdentifierDataService = dataIdentifier.dataService,
-                    delegateDataIdentifier;
+                    prototype = this._getPrototypeForType(objectDescriptor),
+                    object = Object.create(prototype),
+                    constructor = prototype && prototype.constructor,
+                    specializeConstructor = constructor && constructor.specializeConstructor,
+                    dataIdentifierDataService = dataIdentifier && dataIdentifier.dataService,
+                    delegateDataIdentifier,
+                    constructedObject;
                 // constructor = this._getPrototypeForType(objectDescriptor).constructor,
                 // object = new constructor;
                 // //object = Reflect.construct(constructor, this._emptyArray);
 
                 if (object) {
-                    delegateDataIdentifier =
+                    delegateDataIdentifier = dataIdentifierDataService ?
                         dataIdentifierDataService.callDelegateMethod(
                             "dataIdentifierForRawDataServiceCreatingObjectWithDataIdentifier",
                             dataIdentifier.dataService,
                             dataIdentifier
-                        ) ?? dataIdentifier;
+                        ) ?? dataIdentifier :
+                        dataIdentifier;
 
                     /*
                     Our delegate overrode our dataIdentifier, we're going to keep a reference from
@@ -3244,8 +3349,14 @@ DataService.addClassProperties(
                     //     this.recordObjectForDataIdentifier(object, dataIdentifier);
                     // }
 
-                    //This can't work with ES Classes
-                    //object = object.constructor.call(object) || object;
+                    // Legacy Montage constructors initialize template defaults.
+                    // Mod stores them separately because class constructors
+                    // cannot be invoked for Object.create() instances.
+                    if (typeof specializeConstructor === "function") {
+                        constructedObject = specializeConstructor.call(object);
+                        object = constructedObject || object;
+                    }
+
                     if (object) {
                         this._setObjectType(object, objectDescriptor);
                         this._objectDescriptorForObjectCache.set(object, objectDescriptor);
@@ -3254,11 +3365,13 @@ DataService.addClassProperties(
                         this.registerDataObject(object);
                     }
 
-                    dataIdentifierDataService.callDelegateMethod(
-                        "rawDataServiceDidCreateObject",
-                        dataIdentifierDataService,
-                        object
-                    );
+                    if (dataIdentifierDataService) {
+                        dataIdentifierDataService.callDelegateMethod(
+                            "rawDataServiceDidCreateObject",
+                            dataIdentifierDataService,
+                            object
+                        );
+                    }
                 }
                 return object;
             },
@@ -3282,7 +3395,7 @@ DataService.addClassProperties(
                 with different native RawData shapes
             */
                 //if (object && dataIdentifier && this.isRootService && this.isUniquing) {
-                if (object && dataIdentifier) {
+                if (object && dataIdentifier && typeof dataIdentifier === "object") {
                     this.recordDataIdentifierForObject(dataIdentifier, object);
                     this.recordObjectForDataIdentifier(object, dataIdentifier);
                 }

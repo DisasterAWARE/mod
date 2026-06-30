@@ -82,7 +82,7 @@ function loggerToString(object) {
         return "NIL";
     }
 
-    return object._montage_metadata.objectName + ":" + Object.hash(object) + " id: " + object.identifier;
+    return (object._montage_metadata && object._montage_metadata.objectName) + ":" + Object.hash(object) + " id: " + object.identifier;
 }
 
 var CssBasedAnimation = Montage.specialize({
@@ -3181,7 +3181,7 @@ Component.addClassProperties({
             if (this._needsDraw !== value) {
                 if (needsDrawLogger.isDebug) {
                     //jshint -W106
-                    needsDrawLogger.debug("needsDraw toggled " + value + " for " + this._montage_metadata.objectName);
+                    needsDrawLogger.debug("needsDraw toggled " + value + " for " + (this._montage_metadata && this._montage_metadata.objectName));
                     //jshint +W106
                 }
                 this._needsDraw = value;
@@ -4719,7 +4719,7 @@ var RootComponent = Component.specialize(
                             if (needsDrawLogger.isDebug) {
                                 needsDrawLogger.debug(
                                     this,
-                                    "needsDraw = true for: " + childComponent._montage_metadata.exportedSymbol,
+                                    "needsDraw = true for: " + (childComponent._montage_metadata && childComponent._montage_metadata.exportedSymbol),
                                 );
                             }
                             childComponent.needsDraw = true;

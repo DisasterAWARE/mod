@@ -732,7 +732,7 @@ if(globalThis.browser) {
                         We're adding the module of that referrence, typiacally serialized as:
                         "ObjectDescriptorReference": {
                             "prototype": "mod/core/meta/object-descriptor-reference",
-                            "properties": {
+                            "values": {
                                 "valueReference": {
                                     "objectDescriptor": "Object_Descriptor_Name",
                                     "prototypeName": "Object_Descriptor__Prototype_Name",
@@ -741,7 +741,10 @@ if(globalThis.browser) {
                             }
                         },
                     */
-                    dependencies.add((iDependency = iLabelObject.properties.valueReference.objectDescriptorModule["%"]));
+                    var _refValues = iLabelObject.values || iLabelObject.properties;
+                    if (_refValues && _refValues.valueReference && _refValues.valueReference.objectDescriptorModule) {
+                        dependencies.add((iDependency = _refValues.valueReference.objectDescriptorModule["%"]));
+                    }
                     if(callback) {
                         callback(iDependency);
                     }
@@ -1223,6 +1226,18 @@ if(globalThis.browser) {
                     location: location,
                     hash: applicationHash
                 }, config);
+
+                setTimeout(function () {
+                    if (!global.require) {
+                        console.warn("[mod bootstrap] application package is still loading:", {
+                            location: location,
+                            montageLocation: montageLocation,
+                            configLocation: config.location,
+                            paramsPackage: params.package,
+                            appLocation: global.location && global.location.href
+                        });
+                    }
+                }, 3000);
             } else {
                 // allows the bootstrapping to be remote controlled by the
                 // parent window, with a dynamically generated package
@@ -1346,6 +1361,9 @@ if(globalThis.browser) {
                 });
 
             // Will throw error if there is one
+            }).catch(function (error) {
+                console.error("[mod bootstrap] failed to initialize:", error);
+                throw error;
             });
         });
     };
