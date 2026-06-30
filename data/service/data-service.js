@@ -1330,7 +1330,11 @@ DataService.addClassProperties(
          */
         _getChildServiceForObject: {
             value: function (object) {
-                return this.childServiceForType(this.rootService._getObjectType(object));
+                var dataIdentifier = object && this._dataIdentifierByObject && this._dataIdentifierByObject.get(object),
+                    dataService = dataIdentifier && dataIdentifier.dataService;
+
+                return dataService && dataService !== this ? dataService :
+                    this.childServiceForType(this.rootService._getObjectType(object));
             },
         },
 
@@ -3009,7 +3013,10 @@ DataService.addClassProperties(
                 ) {
                     //throw new Error("recordDataIdentifierForObject when one already exists:"+JSON.stringify(object));
                     console.error(
-                        "WARNING: recordDataIdentifierForObject when one already exists:" + JSON.stringify(object)
+                        "WARNING: recordDataIdentifierForObject when one already exists for " +
+                            (dataIdentifier.objectDescriptor && dataIdentifier.objectDescriptor.name) +
+                            " oldPrimaryKey=" + this._dataIdentifierByObject.get(object).primaryKey +
+                            " newPrimaryKey=" + dataIdentifier.primaryKey
                     );
                 }
                 /*
@@ -6436,6 +6443,49 @@ DataService.addClassProperties(
             },
         },
 
+        unregisterDataStreamsForObjectDescriptor: {
+            value: function (objectDescriptor) {
+                var map = this._dataStreamByObjectDescriptorByCriteriaExpressionByCriteriaParameters,
+                    didDelete = map.delete(objectDescriptor),
+                    descriptors = [],
+                    descriptor,
+                    i;
+
+                map.forEach(function (value, key) {
+                    descriptors.push(key);
+                });
+                for (i = 0; i < descriptors.length; i++) {
+                    descriptor = descriptors[i];
+                    if (this._areObjectDescriptorsEquivalent(descriptor, objectDescriptor)) {
+                        didDelete = map.delete(descriptor) || didDelete;
+                    }
+                }
+
+                return didDelete;
+            },
+        },
+
+        _areObjectDescriptorsEquivalent: {
+            value: function (a, b) {
+                var aModuleId,
+                    bModuleId;
+
+                if (!a || !b) {
+                    return false;
+                }
+
+                if (a === b) {
+                    return true;
+                }
+
+                aModuleId = a.module && a.module.id || a.moduleId;
+                bModuleId = b.module && b.module.id || b.moduleId;
+
+                return a.name && a.name === b.name &&
+                    (!aModuleId || !bModuleId || aModuleId === bModuleId);
+            }
+        },
+
         /*
         DataStream cache:
 
@@ -7423,7 +7473,8 @@ DataService.addClassProperties(
                     }
                     return mappingPromise.then(function () {
                         return self.saveRawData(record, object).then(function (data) {
-                            self.rootService.createdDataObjects.delete(object);
+                            self.rootService.unregisterCreatedDataObject(object);
+                            self.rootService.unregisterDataStreamsForObjectDescriptor(self.objectDescriptorForObject(object));
                             return data;
                         });
                     });
@@ -7434,7 +7485,8 @@ DataService.addClassProperties(
                         if (result) {
                             return result.then(
                                 function (success) {
-                                    self.rootService.createdDataObjects.delete(object);
+                                    self.rootService.unregisterCreatedDataObject(object);
+                                    self.rootService.unregisterDataStreamsForObjectDescriptor(self.objectDescriptorForObject(object));
                                     //Duck test of an operation
                                     // if(success.data) {
                                     //     return success.data;
@@ -7476,6 +7528,7 @@ DataService.addClassProperties(
                 } else if (service) {
                     promise = service[action](object).then(function () {
                         self.unregisterCreatedDataObject(object);
+                        self.rootService.unregisterDataStreamsForObjectDescriptor(self.objectDescriptorForObject(object));
                         return null;
                     });
                 }

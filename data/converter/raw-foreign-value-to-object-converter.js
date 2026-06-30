@@ -50,7 +50,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
     /*
         cache:
 
-        Map: ObjectDescriptor -> Map: criteriaExpression -> Map: JSON.stringify(criteria.parameters) -> Promise
+        Map: ObjectDescriptor -> Map: criteriaExpression -> Map: criteria parameters key -> Promise
 
     */
     _fetchPromiseByObjectDescriptorByCriteriaExpressionByCriteriaParameters: {
@@ -80,10 +80,30 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
         }
     },
 
+    _criteriaParametersCacheKey: {
+        value: function (criteria) {
+            var parameters = criteria && criteria.parameters;
+
+            if (parameters == null || typeof parameters === "string") {
+                return parameters;
+            }
+
+            if (typeof parameters !== "object") {
+                return String(parameters);
+            }
+
+            try {
+                return JSON.stringify(parameters);
+            } catch (error) {
+                return parameters;
+            }
+        }
+    },
+
     _registeredFetchPromiseMapForObjectDescriptorCriteria: {
         value: function(objectDescriptor, criteria) {
             var criteriaExpressionMap = this._fetchPromiseMapForObjectDescriptorCriteria(objectDescriptor,criteria),
-                parametersKey = typeof criteria.parameters === "string" ? criteria.parameters : JSON.stringify(criteria.parameters);
+                parametersKey = this._criteriaParametersCacheKey(criteria);
 
             return criteriaExpressionMap.get(parametersKey);
         }
@@ -92,7 +112,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
     _registerFetchPromiseForObjectDescriptorCriteria: {
         value: function(fetchPromise, objectDescriptor, criteria) {
             var criteriaExpressionMap = this._fetchPromiseMapForObjectDescriptorCriteria(objectDescriptor,criteria),
-                parametersKey = typeof criteria.parameters === "string" ? criteria.parameters : JSON.stringify(criteria.parameters);
+                parametersKey = this._criteriaParametersCacheKey(criteria);
 
             return criteriaExpressionMap.set(parametersKey,fetchPromise);
         }
@@ -100,7 +120,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
     _unregisterFetchPromiseForObjectDescriptorCriteria: {
         value: function(objectDescriptor, criteria) {
             var criteriaExpressionMap = this._fetchPromiseMapForObjectDescriptorCriteria(objectDescriptor,criteria),
-            parametersKey = typeof criteria.parameters === "string" ? criteria.parameters : JSON.stringify(criteria.parameters);
+                parametersKey = this._criteriaParametersCacheKey(criteria);
 
             return criteriaExpressionMap.delete(parametersKey);
         }
