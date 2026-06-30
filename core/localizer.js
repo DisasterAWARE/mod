@@ -254,8 +254,8 @@ var Localizer = exports.Localizer = Montage.specialize( /** @lends Localizer.pro
             this._availableLocales = this.callDelegateMethod("localizerWillPromiseAvailableLocales", this);
 
             if (!this._availableLocales) {
-                this._availableLocales = this._manifest.get("files").get(LOCALES_DIRECTORY).get("files").then(function (locales) {
-                    return Object.keys(locales);
+                this._availableLocales = this._manifest.then(function (manifest) {
+                    return Object.keys(manifest.files[LOCALES_DIRECTORY].files);
                 });
             }
 

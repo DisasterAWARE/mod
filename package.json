@@ -26,6 +26,14 @@
                 "bluebird": {
                     "name": "bluebird",
                     "location": "node_modules/bluebird"
+                },
+                "collections": {
+                    "name": "collections",
+                    "location": "../collections"
+                },
+                "frb": {
+                    "name": "frb",
+                    "location": "../frb"
                 }
             }
         },

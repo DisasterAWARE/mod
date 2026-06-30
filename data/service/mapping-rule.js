@@ -10,6 +10,7 @@ var TWO_WAY_BINDING = "<->";
 
 var CONVERTERS_ACCEPTING_SCOPE = new Set([
     "data/converter/raw-foreign-value-to-object-converter",
+    "data/converter/raw-property-value-to-object-converter",
     "data/converter/raw-embedded-value-to-object-converter",
     "data/converter/raw-embedded-hierarchy-value-to-object-converter"
 ])
@@ -277,6 +278,29 @@ exports.MappingRule = Montage.specialize(/** @lends MappingRule.prototype */ {
         }
     },
 
+    _converterAcceptsScope: {
+        value: function (converter) {
+            var converters = converter && converter.converters,
+                i, countI;
+
+            if (!converter) {
+                return false;
+            }
+
+            if (CONVERTERS_ACCEPTING_SCOPE.has(converter.moduleId)) {
+                return true;
+            }
+
+            for (i = 0, countI = converters && converters.length || 0; i < countI; i++) {
+                if (this._converterAcceptsScope(converters[i])) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    },
+
     /**
      * Return the value of the property for this rule
      * @type {Scope}
@@ -316,7 +340,7 @@ exports.MappingRule = Montage.specialize(/** @lends MappingRule.prototype */ {
                  *    
                  * This goal is to eventually change all data converters to accept scope
                  */
-               if (CONVERTERS_ACCEPTING_SCOPE.has(this.converter.moduleId)) {
+               if (this._converterAcceptsScope(this.converter)) {
                 ruleScope = scope.nest(value);
                 value = this.converter.convert(ruleScope);
                } else {

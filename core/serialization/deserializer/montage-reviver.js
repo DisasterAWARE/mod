@@ -1141,7 +1141,13 @@ var MontageReviver = exports.MontageReviver = Montage.specialize(/** @lends Mont
 
     _throwUnableToReviveValueSynchronouslyWithLabel : {
         value: function(value, label) {
-            throw new Error("Unable to revive value with label " + label + " synchronously: " + value);
+            var serializedValue;
+            try {
+                serializedValue = JSON.stringify(value);
+            } catch (e) {
+                serializedValue = String(value);
+            }
+            throw new Error("Unable to revive value with label " + label + " synchronously: " + serializedValue);
         }
     },
 
@@ -1724,6 +1730,15 @@ MontageReviver.defineUnitReviver("values", function (unitDeserializer, object, v
         selfDeserializer.isSync = context.isSync;
         selfDeserializer.initWithObjectAndObjectDescriptorAndContextAndUnitNames(object, montageObjectDesc, context, MontageReviver._unitNames);
         substituteObject = (substituteObject || object).deserializeSelf(selfDeserializer);
+
+        if (PromiseIs(substituteObject)) {
+            if (!context.isSync) {
+                substituteObject.catch(function (error) {
+                    console.error("deserializeSelf() promise rejected", error);
+                });
+            }
+            substituteObject = undefined;
+        }
 
         if (typeof substituteObject !== "undefined" && substituteObject !== object) {
             //The deserialization used to be inlined, so it was easy to substitute.

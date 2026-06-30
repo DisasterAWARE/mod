@@ -133,4 +133,22 @@ if (!Promise.hasOwnProperty("delay")) {
     });
 }
 
+if (!Promise.hasOwnProperty("onPossiblyUnhandledRejection")) {
+    Object.defineProperty(Promise, "onPossiblyUnhandledRejection", {
+        value: function (handler) {
+            var globalObject = typeof globalThis !== "undefined" ? globalThis :
+                    typeof self !== "undefined" ? self :
+                    typeof window !== "undefined" ? window :
+                    undefined;
+
+            if (globalObject && typeof globalObject.addEventListener === "function") {
+                globalObject.addEventListener("unhandledrejection", function (event) {
+                    handler(event.reason, event.promise);
+                });
+            }
+        },
+        enumerable: false
+    });
+}
+
 exports.Promise = Promise;

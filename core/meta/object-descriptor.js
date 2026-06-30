@@ -1142,6 +1142,9 @@ ObjectDescriptor.addClassProperties(
          */
         propertyDescriptorForName: {
             value: function (name) {
+                if (!this._propertyDescriptorsAreCached) {
+                    this.propertyDescriptors;
+                }
                 var propertyDescriptor = this.propertyDescriptorsByName.get(name);
                 // if (propertyDescriptor === undefined) {
                 //     this.propertyDescriptorsByName.set(name, exports.UnknownPropertyDescriptor);

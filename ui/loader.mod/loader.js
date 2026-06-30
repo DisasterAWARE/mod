@@ -352,6 +352,7 @@ exports.Loader = Component.specialize( /** @lends Loader.prototype # */ {
                 return self._mainLoadedCallback(exports);
             })
             .catch((error) => {
+                console.error("[loader] ui/main.mod failed:", error);
                 if(error.message.includes("main.reel")) {
                     console.warn("Please rename main.mod to main.mod")
                 }
