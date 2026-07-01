@@ -1676,20 +1676,6 @@ exports.ExpressionDataMapping = DataMapping.specialize(/** @lends ExpressionData
                 locales,
                 debug = DataService.debugProperties.has(propertyName) || (rule && rule.debug === true);
 
-            if (typeof document !== "undefined" && document.documentElement && propertyName === "roles") {
-                document.documentElement.setAttribute("data-expression-roles-stage", JSON.stringify({
-                    stage: "property",
-                    hasRule: !!rule,
-                    hasConverter: !!(rule && rule.converter),
-                    hasPropertyDescriptor: !!propertyDescriptor,
-                    propertyDescriptorName: propertyDescriptor && propertyDescriptor.name,
-                    hasValueDescriptor: !!propertyDescriptorValueDescriptor,
-                    valueDescriptorName: propertyDescriptorValueDescriptor && propertyDescriptorValueDescriptor.name,
-                    isRelationship: !!isRelationship,
-                    isDerived: !!isDerived
-                }));
-            }
-
 
             //Simplistic and potentially wrong, but if there's no properties on data for that rule, then there's no point doing it
             // if(rule && !data.hasOwnProperty(rule.sourcePath)) {

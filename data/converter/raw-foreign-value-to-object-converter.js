@@ -243,19 +243,6 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
                             query.readExpressions = [currentRule.targetPath];
                         }
 
-                        if (typeof document !== "undefined" && document.documentElement && currentRule && currentRule.targetPath === "preferences") {
-                            document.documentElement.setAttribute("data-preferences-foreign-fetch", JSON.stringify({
-                                stage: "fetch",
-                                type: typeToFetch && typeToFetch.name,
-                                criteria: criteria && criteria.expression,
-                                parameterKeys: criteria && criteria.parameters ? Object.keys(criteria.parameters) : [],
-                                ownerType: criteria && criteria.parameters && criteria.parameters.ownerType,
-                                id: criteria && criteria.parameters && criteria.parameters.id,
-                                hasOwner: !!(criteria && criteria.parameters && criteria.parameters.owner),
-                                readExpressions: query.readExpressions
-                            }));
-                        }
-
                     /*
                         When we fetch objects that have inverse relationships on each others none can complete their mapRawDataProcess because the first one's promise for mapping the relationship to the second never commpletes because the second one itself has it's raw data the foreignKey to the first and attemps to do so by default on processing operations, where the previous way was only looping on requisite proprties. If both relationships were requisite, on each side we'd end up with the same problem.
 
@@ -338,12 +325,6 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
                         fetchPromise = service.rootService.fetchData(query)
                                 .then(function(value) {
-                                    if (typeof document !== "undefined" && document.documentElement && currentRule && currentRule.targetPath === "preferences") {
-                                        document.documentElement.setAttribute("data-preferences-foreign-fetch", JSON.stringify({
-                                            stage: "fetched",
-                                            count: value && value.length
-                                        }));
-                                    }
                                     self._unregisterFetchPromiseForObjectDescriptorCriteria(typeToFetch, criteria);
                                     return value;
                                 });
@@ -525,15 +506,6 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
             query.hints = {rawDataService: service};
 
-            if (typeof document !== "undefined" && document.documentElement) {
-                document.documentElement.setAttribute("data-raw-foreign-stage", JSON.stringify({
-                    stage: "fetch",
-                    type: type && type.name,
-                    criteria: combinedCriteria && combinedCriteria.expression,
-                    readExpressions: queryParts.readExpressions
-                }));
-            }
-
             if(queryParts.readExpressions && queryParts.readExpressions.length > 0) {
                 query.readExpressions = queryParts.readExpressions;
             }
@@ -546,13 +518,6 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
             mapIterationFetchPromise = rootService.fetchData(query)
             .then(function(combinedFetchedValues) {
-                if (typeof document !== "undefined" && document.documentElement) {
-                    document.documentElement.setAttribute("data-raw-foreign-stage", JSON.stringify({
-                        stage: "fetched",
-                        type: type && type.name,
-                        count: combinedFetchedValues && combinedFetchedValues.length
-                    }));
-                }
                 /*
                     value contains all the instances matching any of the combined criteria. Each criteria is expressed in term of raw data, so we need to evaluate it on the snapshots of these objects.
 

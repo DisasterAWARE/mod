@@ -1226,18 +1226,6 @@ if(globalThis.browser) {
                     location: location,
                     hash: applicationHash
                 }, config);
-
-                setTimeout(function () {
-                    if (!global.require) {
-                        console.warn("[mod bootstrap] application package is still loading:", {
-                            location: location,
-                            montageLocation: montageLocation,
-                            configLocation: config.location,
-                            paramsPackage: params.package,
-                            appLocation: global.location && global.location.href
-                        });
-                    }
-                }, 3000);
             } else {
                 // allows the bootstrapping to be remote controlled by the
                 // parent window, with a dynamically generated package
@@ -1361,9 +1349,6 @@ if(globalThis.browser) {
                 });
 
             // Will throw error if there is one
-            }).catch(function (error) {
-                console.error("[mod bootstrap] failed to initialize:", error);
-                throw error;
             });
         });
     };

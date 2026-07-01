@@ -2543,38 +2543,6 @@ DataService.addClassProperties(
                             ", set a breakpoint here."
                     );
                 }
-                if (propertyName === "preferences" && typeof document !== "undefined" && document.documentElement) {
-                    var objectDescriptor = object.objectDescriptor,
-                        directPropertyDescriptor = objectDescriptor &&
-                            objectDescriptor.propertyDescriptorForName &&
-                            objectDescriptor.propertyDescriptorForName(propertyName),
-                        propertyNames = objectDescriptor && objectDescriptor.propertyDescriptors &&
-                            objectDescriptor.propertyDescriptors.map(function (descriptor) {
-                                return descriptor && descriptor.name;
-                            });
-                    document.documentElement.setAttribute("data-preferences-fetch-object-property", JSON.stringify({
-                        service: this.name || this.identifier,
-                        objectDescriptorName: objectDescriptor && objectDescriptor.name,
-                        objectDescriptorModule: objectDescriptor && objectDescriptor.module && objectDescriptor.module.id,
-                        directPropertyDescriptorName: directPropertyDescriptor && directPropertyDescriptor.name,
-                        propertyNames: propertyNames,
-                        handlesType: !!handlesType,
-                        hasMappingLookup: !!hasMappingLookup,
-                        canMapObjectPropertyLocally: !!canMapObjectPropertyLocally,
-                        isRelationshipProperty: !!isRelationshipProperty,
-                        useDelegate: !!useDelegate,
-                        childServiceCount: childServices && childServices.length || 0,
-                        childServices: childServices && childServices.map(function (service) {
-                            return service.name || service.identifier;
-                        }),
-                        hasMappingRule: !!mappingRule,
-                        serviceIdentifier: mappingRule && mappingRule.serviceIdentifier,
-                        shouldHandleLocally: !!shouldHandleLocally,
-                        hasDelegateFunction: !!delegateFunction,
-                        hasPropertyDescriptor: !!propertyDescriptor
-                    }));
-                }
-
                 if (
                     handlesType &&
                     propertyDescriptor &&

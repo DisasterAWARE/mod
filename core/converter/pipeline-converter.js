@@ -96,11 +96,6 @@ exports.PipelineConverter = Converter.specialize({
                 converter.registerMappedPropertiesAsChanged = converter.registerMappedPropertiesAsChanged || this.registerMappedPropertiesAsChanged;
             }
 
-            if (typeof document !== "undefined" && document.documentElement &&
-                    this.currentRule && this.currentRule.targetPath === "roles") {
-                document.documentElement.setAttribute("data-pipeline-roles-stage", "convert index " + index);
-            }
-
             output = converter.convert(input);
             isPromise = this._isThenable(output);
 
@@ -115,10 +110,6 @@ exports.PipelineConverter = Converter.specialize({
                 result = output;
             } else if (isPromise) {
                 result = output.then(function (value) {
-                    if (typeof document !== "undefined" && document.documentElement &&
-                            self.currentRule && self.currentRule.targetPath === "roles") {
-                        document.documentElement.setAttribute("data-pipeline-roles-stage", "resolved index " + (index - 1));
-                    }
                     return self._convertWithConverterAtIndex(value, index);
                 });
             } else {
