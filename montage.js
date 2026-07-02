@@ -1145,6 +1145,7 @@ if(globalThis.browser) {
             };
 
             exports.Require = Require;
+            Require.delegate = exports;
 
             var montageLocation = URL.resolve(config.location, params.montageLocation);
 
@@ -1356,11 +1357,17 @@ if(globalThis.browser) {
     // Bootstrapping for multiple-platforms
     exports.getPlatform = function () {
         if (typeof self !== "undefined" && typeof importScripts !== "undefined") {
-            var modLocation = global.PATH_TO_MOD || global.PATH_TO_MONTAGE || "node_modules/mod/";
+            var modLocation = global.PATH_TO_MOD || global.PATH_TO_MONTAGE || "node_modules/mod/",
+                cacheBust = global.MontageParams && global.MontageParams.cacheBust,
+                workerLocation;
             if (modLocation.charAt(modLocation.length - 1) !== "/") {
                 modLocation += "/";
             }
-            importScripts(modLocation + "worker.js");
+            workerLocation = modLocation + "worker.js";
+            if (cacheBust) {
+                workerLocation += (workerLocation.indexOf("?") === -1 ? "?" : "&") + "cacheBust=" + encodeURIComponent(cacheBust);
+            }
+            importScripts(workerLocation);
             return global.worker;
         } else if (typeof window !== "undefined" && window && window.document) {
             return browserPlatform;

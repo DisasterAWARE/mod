@@ -12,7 +12,6 @@
 var core = require("./core"),
     Montage = core.Montage,
     MessageFormat = require("./messageformat"),
-    rootComponent = require("../ui/component").__root__,
     logger = require("./logger").logger("localizer"),
     Serializer = require("./serialization/serializer/montage-serializer").MontageSerializer,
     Deserializer = require("./serialization/deserializer/montage-deserializer").MontageDeserializer,
@@ -45,6 +44,15 @@ var EMPTY_STRING_FUNCTION = function () { return ""; };
 var reLanguageTagValidator = /^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$/;
 
 var defaultLocalizer;
+var rootComponent;
+
+function getRootComponent() {
+    if (!rootComponent && typeof document !== "undefined") {
+        rootComponent = require("../ui/component").__root__;
+    }
+
+    return rootComponent;
+}
 
 /**
  * @class Localizer
@@ -65,7 +73,10 @@ var Localizer = exports.Localizer = Montage.specialize( /** @lends Localizer.pro
                 defaultLocaleStored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
             }
 
-            var locateCandidate = locale || defaultLocaleStored || window.navigator.userLanguage || window.navigator.language || Localizer.defaultLocale,
+            var browserNavigator = typeof window !== "undefined" && window.navigator || typeof navigator !== "undefined" && navigator,
+                locateCandidate = locale || defaultLocaleStored ||
+                    browserNavigator && (browserNavigator.userLanguage || browserNavigator.language) ||
+                    Localizer.defaultLocale,
                 defaultLocale = this.callDelegateMethod("localizerWillUseLocale", this, locateCandidate);
 
             this.locale = defaultLocale || locateCandidate;
@@ -675,7 +686,7 @@ var Localizer = exports.Localizer = Montage.specialize( /** @lends Localizer.pro
     _dispatchLocaleChange: {
         value: function (previousLocale, _component) {
             if (!_component) {
-                _component = this.component || rootComponent;
+                _component = this.component || getRootComponent();
 
                 if (!this._dispatchLocaleChangeAsNeeded(previousLocale, _component)) {
                     return;

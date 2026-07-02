@@ -23,6 +23,76 @@ var worker,
         });
     }
 
+    function read(request) {
+        return fetchText(request).then(function (text) {
+            if (text === null) {
+                throw new Error("Can't fetch " + JSON.stringify(request));
+            }
+            return text;
+        });
+    }
+
+    function loadModule(config, location, module) {
+        return config.read(location, module).then(function (text) {
+            if (module.type === undefined) {
+                module.type = "javascript";
+            }
+            if (module.text === undefined) {
+                module.text = text;
+            }
+            if (module.location === undefined) {
+                module.location = location;
+            }
+        });
+    }
+
+    var DoubleUnderscore = "__",
+        Underscore = "_",
+        globalEvalConstantA = "(function ",
+        globalEvalConstantB = "(require, exports, module, global) {",
+        globalEvalConstantC = "//*/\n})\n//# sourceURL=",
+        globalConcatenator = [globalEvalConstantA, undefined, globalEvalConstantB, undefined, globalEvalConstantC, undefined],
+        nameRegex = /[^\w\d]/g,
+        supportsTemplateLiterals = false;
+
+    try {
+        eval("`foo`");
+        supportsTemplateLiterals = true;
+    } catch (e) {
+    }
+
+    function compiler(config) {
+        return function (module) {
+            var displayName;
+
+            if (module.location && module.location.endsWith(".mjson")) {
+                return module;
+            }
+            if (module.factory || module.text === void 0) {
+                return module;
+            }
+            if (config.useScriptInjection) {
+                throw new Error("Can't use eval.");
+            }
+
+            if (!supportsTemplateLiterals) {
+                globalConcatenator[1] = [DoubleUnderscore, module.require.config.name, Underscore, module.id].join("").replace(nameRegex, Underscore);
+                globalConcatenator[3] = module.text;
+                globalConcatenator[5] = module.location;
+
+                module.factory = globalEval(globalConcatenator.join(""));
+                module.factory.displayName = globalConcatenator[1];
+                module.text = globalConcatenator[1] = globalConcatenator[3] = globalConcatenator[5] = null;
+            } else {
+                displayName = (DoubleUnderscore + module.require.config.name + Underscore + module.id).replace(nameRegex, Underscore);
+                module.factory = globalEval(globalEvalConstantA + displayName + globalEvalConstantB + module.text + globalEvalConstantC + module.location);
+                module.factory.displayName = displayName;
+            }
+
+            return module;
+        };
+    }
+
     worker = {
 
         makeResolve: function () {
@@ -45,8 +115,10 @@ var worker,
             }
         },
 
+        read: read,
+
         load: function (location, loadCallback) {
-            fetchText(location).then(function (text) {
+            this.read(location).then(function (text) {
                 globalEval(text);
                 if (loadCallback) {
                     loadCallback(location);
@@ -170,6 +242,23 @@ var worker,
                     Require = bootRequire("require");
 
                 exports.Require = Require;
+                Require.read = worker.read;
+                Require.Compiler = compiler;
+                Require.overlays = ["worker", "browser", "mod", "montage"];
+                Require.makeLoader = function (config) {
+                    return Require.ModLoader(config,
+                        Require.MappingsLoader(
+                            config,
+                            Require.LocationLoader(
+                                config,
+                                Require.MemoizedLoader(
+                                    config,
+                                    loadModule.bind(null, config)
+                                )
+                            )
+                        )
+                    );
+                };
                 Require.getLocation = function () {
                     return applicationPath;
                 };
@@ -213,11 +302,12 @@ var worker,
         initMontage: function (montageRequire, applicationRequire, params) {
             var dependencies = [
                     "core/core",
+                    "core/promise",
                     "core/event/event-manager",
                     "core/serialization/deserializer/montage-reviver",
                     "core/logger"
                 ],
-                Promise = montageRequire("core/promise").Promise,
+                Promise = global.Promise,
                 deepLoadPromises = [],
                 i,
                 dependency;
@@ -251,7 +341,6 @@ var worker,
                 MontageReviver = montageRequire("core/serialization/deserializer/montage-reviver").MontageReviver;
 
                 exports.MontageDeserializer = MontageDeserializer;
-                exports.Require.delegate = exports;
 
                 if (typeof global.montageWillLoad === "function") {
                     global.montageWillLoad();
