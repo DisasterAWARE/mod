@@ -1355,7 +1355,14 @@ if(globalThis.browser) {
 
     // Bootstrapping for multiple-platforms
     exports.getPlatform = function () {
-        if (typeof window !== "undefined" && window && window.document) {
+        if (typeof self !== "undefined" && typeof importScripts !== "undefined") {
+            var modLocation = global.PATH_TO_MOD || global.PATH_TO_MONTAGE || "node_modules/mod/";
+            if (modLocation.charAt(modLocation.length - 1) !== "/") {
+                modLocation += "/";
+            }
+            importScripts(modLocation + "worker.js");
+            return global.worker;
+        } else if (typeof window !== "undefined" && window && window.document) {
             return browserPlatform;
         } else if (typeof process !== "undefined") {
             return require("./node.js");
@@ -1364,7 +1371,9 @@ if(globalThis.browser) {
         }
     };
 
-    if (typeof window !== "undefined") {
+    if (typeof self !== "undefined" && typeof importScripts !== "undefined") {
+        exports.initMontage();
+    } else if (typeof window !== "undefined") {
         if (global.__MONTAGE_LOADED__) {
             console.warn("Montage already loaded!");
         } else {
