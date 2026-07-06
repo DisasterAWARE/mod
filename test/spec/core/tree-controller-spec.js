@@ -1,4 +1,5 @@
-var TreeController = require("mod/core/tree-controller").TreeController;
+var TreeController = require("mod/core/tree-controller").TreeController,
+    DataOrdering = require("mod/data/model/data-ordering").DataOrdering;
 
 describe("tree-controller-spec", function () {
 
@@ -20,7 +21,7 @@ describe("tree-controller-spec", function () {
             "name": "root",
             "children": [
                 {
-                    "name": "a",
+                    "name": "b",
                     "children": [
                         {
                             "name": "aa",
@@ -47,7 +48,7 @@ describe("tree-controller-spec", function () {
                     ]
                 },
                 {
-                    "name": "b",
+                    "name": "a",
                     "children": [
                         {
                             "name": "ba",
@@ -90,11 +91,17 @@ describe("tree-controller-spec", function () {
             treeController.expandAll();
             expect(treeController.data).not.toEqual(null);
         });
-        it("childrenFromNode should work properly if childrenExpression is not set", function () {
-            expect(treeController.childrenFromNode(treeData)[0].name).toEqual("a");
+        it("childrenFromNode should preserve source order if childrenExpression is not set", function () {
+            expect(treeController.childrenFromNode(treeData)[0].name).toEqual("b");
         });
-        it("childrenFromNode should work properly if childrenExpression is set as 'children'", function () {
+        it("childrenFromNode should preserve source order if childrenExpression is set as 'children'", function () {
             treeController.childrenExpression = "children";
+            expect(treeController.childrenFromNode(treeData)[0].name).toEqual("b");
+        });
+        it("childrenFromNode should sort children when childrenDataOrderings is set", function () {
+            treeController.childrenDataOrderings = [
+                DataOrdering.withExpressionAndOrder("name", DataOrdering.Ascending)
+            ];
             expect(treeController.childrenFromNode(treeData)[0].name).toEqual("a");
         });
         it("childrenFromNode should work properly if childrenExpression is a property literal", function () {
