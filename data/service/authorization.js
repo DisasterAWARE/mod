@@ -1,4 +1,5 @@
-var Montage = require("core/core").Montage;
+var DataObject = require("../model/data-object").DataObject,
+    Montage = require("core/core").Montage;
 
 /**
  * An Authorization represents the details regarding access to a certain DataService.
@@ -6,17 +7,21 @@ var Montage = require("core/core").Montage;
  * subtypes. Login/Password and O-Auth are 2 examples.
  *
  * @class
- * @extends external:Montage
+ * @extends external:DataObject
  */
-var Authorization = exports.Authorization = Montage.specialize(/** @lends Authorization.prototype */ {
+var Authorization = exports.Authorization = class Authorization extends DataObject {
+    static {
+        Montage.defineProperties(this.prototype, /** @lends Authorization.prototype */ {
 
-  logOut: {
-    value: function () {
-      console.warn("Authorization.logOut() must be overridden by the implementing object");
+            logOut: {
+                value: function () {
+                    console.warn("Authorization.logOut() must be overridden by the implementing object");
+                }
+            }
+
+        });
     }
-  }
-
-});
+};
 
 /*
     An example, GitHub Authorization:

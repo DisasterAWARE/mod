@@ -2101,6 +2101,10 @@ DataService.addClassProperties(
                             dataService.removeEventListener("");
                         }
 
+                        if (!dataService._dataObjectHasOwnPropertyChangeListener(this, key, listener, beforeChange)) {
+                            return;
+                        }
+
                         return this.propertyChanges_prototype_removeOwnPropertyChangeListener(
                             key,
                             listener,
@@ -2110,6 +2114,16 @@ DataService.addClassProperties(
                 }
                 return this.__dataObject_removeOwnPropertyChangeListener;
             },
+        },
+
+        _dataObjectHasOwnPropertyChangeListener: {
+            value: function (object, key, listener, beforeChange) {
+                var descriptor = PropertyChanges.getOwnPropertyChangeDescriptor(object, key),
+                    listeners = descriptor && (beforeChange ? descriptor._willChangeListeners : descriptor._changeListeners),
+                    current = listeners && listeners._current;
+
+                return current === listener || Array.isArray(current) && current.indexOf(listener) !== -1;
+            }
         },
 
         /***************************************************************************
@@ -7494,7 +7508,13 @@ DataService.addClassProperties(
             value: function (changeEvent) {
                 //Adding check to avoid changes from property-fetching
                 let trigger = this._triggerForObjectProperty(changeEvent.target, changeEvent.key),
-                    triggerValueStatus = trigger._getValueStatus(changeEvent.target);
+                    triggerValueStatus;
+
+                if (!trigger) {
+                    return;
+                }
+
+                triggerValueStatus = trigger._getValueStatus(changeEvent.target);
 
                 /*
                 If triggerValueStatus is a promise, then we know the property is being fetched.

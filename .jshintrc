@@ -116,6 +116,7 @@
         //"iLoveDouglas"
     ],
     "indent"        : 4,         // Specify indentation spacing
+    "esversion": 6,
     "globals": {
         // Definition by montage
         "require": false,
@@ -139,6 +140,7 @@
         // Feature detect
         "WebKitPoint": false,
         "webkitConvertPointFromNodeToPage": false,
-        "webkitConvertPointFromPageToNode": false
+        "webkitConvertPointFromPageToNode": false,
+        "esversion": 6
     }
 }
