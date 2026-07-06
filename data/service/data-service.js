@@ -1191,6 +1191,9 @@ DataService.addClassProperties(
                     }
 
                     if (descriptor) {
+                        if (!descriptor.object) {
+                            descriptor.object = type;
+                        }
                         this._constructorToObjectDescriptorMap.set(type, descriptor);
                     }
                 }
@@ -2557,7 +2560,8 @@ DataService.addClassProperties(
                         typeof this.mapObjectToRawData === "function",
                     shouldHandleLocally = handlesType &&
                         (hasFetchRawObjectProperty || localDelegateFunction || canMapObjectPropertyLocally) &&
-                        (!childServices || childServices.length === 0 || (mappingRule && !mappingRule.serviceIdentifier)),
+                        (!childServices || childServices.length === 0 || localDelegateFunction ||
+                            (mappingRule && !mappingRule.serviceIdentifier)),
                     isHandler = shouldHandleLocally,
                     useDelegate = isHandler && hasFetchRawObjectProperty && !isRelationshipProperty,
                     delegateFunction = !useDelegate && isHandler && localDelegateFunction,
@@ -6443,17 +6447,40 @@ DataService.addClassProperties(
 
         _criteriaParametersReplacer: {
             value: function (key, value) {
-                return typeof value === "object"
-                    ? key === ""
-                        ? JSON.stringify(value, this._criteriaParametersReplacer)
-                        : value?.dataIdentifier
-                        ? value.dataIdentifier
-                        : !!value
-                        ? value.toString()
-                        : null
-                    : isArray(value)
-                    ? value.map(this._criteriaParametersReplacer)
-                    : value;
+                var objectDescriptor, module, moduleId;
+
+                if (isArray(value)) {
+                    return value.map(this._criteriaParametersReplacer);
+                }
+
+                if (typeof value === "object") {
+                    if (!value) {
+                        return null;
+                    }
+
+                    if (key === "") {
+                        return JSON.stringify(value, this._criteriaParametersReplacer);
+                    }
+
+                    if (value.dataIdentifier) {
+                        return value.dataIdentifier;
+                    }
+
+                    if (value.uuid || value.id || value.domain || value.url || value.name) {
+                        return value.uuid || value.id || value.domain || value.url || value.name;
+                    }
+
+                    objectDescriptor = value.objectDescriptor;
+                    module = objectDescriptor && objectDescriptor.objectDescriptorInstanceModule;
+                    moduleId = module && module.id || objectDescriptor && objectDescriptor.name;
+                    if (moduleId) {
+                        return moduleId;
+                    }
+
+                    return value.toString !== Object.prototype.toString ? value.toString() : null;
+                }
+
+                return value;
             },
         },
 

@@ -59,26 +59,26 @@ Object.addEach(Range.prototype, PropertyChanges.prototype);
 //    if (!isValidBounds(bounds)) throw new RangeError(INVALID_BOUNDS_ERR + bounds)
 // }
 
-Object.defineProperty(Range.prototype,"includesBegin", {
-    get: function () {
-        return this.bounds[0] === "[";
+function defineRangeBoundsProperty(name, getter) {
+    if (!Object.getOwnPropertyDescriptor(Range.prototype, name)) {
+        Object.defineProperty(Range.prototype, name, {
+            get: getter
+        });
     }
+}
+
+defineRangeBoundsProperty("includesBegin", function () {
+    return this.bounds[0] === "[";
 });
-Object.defineProperty(Range.prototype,"excludesBegin", {
-    get: function () {
-        return this.bounds[0] === "(";
-    }
+defineRangeBoundsProperty("excludesBegin", function () {
+    return this.bounds[0] === "(";
 });
 
-Object.defineProperty(Range.prototype,"includesEnd", {
-    get: function () {
-        return this.bounds[1] === "]";
-    }
+defineRangeBoundsProperty("includesEnd", function () {
+    return this.bounds[1] === "]";
 });
-Object.defineProperty(Range.prototype,"excludesEnd", {
-    get: function () {
-        return this.bounds[1] === ")";
-    }
+defineRangeBoundsProperty("excludesEnd", function () {
+    return this.bounds[1] === ")";
 });
 
 
@@ -155,27 +155,29 @@ Range.prototype.overlaps = Range.prototype.intersects;
  * @method contains
  * @param {Object} value
  */
-Range.prototype._contains = Range.prototype.contains;
+if (!Range.prototype._contains) {
+    Range.prototype._contains = Range.prototype.contains;
 
-Range.prototype.contains = function(value) {
-    if(value instanceof Range) {
-        if (this.isEmpty()) return Range.empty;
-        if (value.isEmpty()) return Range.empty;
+    Range.prototype.contains = function(value) {
+        if(value instanceof Range) {
+            if (this.isEmpty()) return Range.empty;
+            if (value.isEmpty()) return Range.empty;
 
-        /*
-            Range.compareBeginToBegin(new Range(0, 10), new Range(5, 15)) // => -1
-            Range.compareBeginToBegin(new Range(0, 10), new Range(0, 15)) // => 0
-            Range.compareBeginToBegin(new Range(0, 10), new Range(0, 15, "()")) // => 1
+            /*
+                Range.compareBeginToBegin(new Range(0, 10), new Range(5, 15)) // => -1
+                Range.compareBeginToBegin(new Range(0, 10), new Range(0, 15)) // => 0
+                Range.compareBeginToBegin(new Range(0, 10), new Range(0, 15, "()")) // => 1
 
-            Range.compareEndToEnd(new Range(0, 10), new Range(5, 15)) // => -1
-            Range.compareEndToEnd(new Range(0, 10), new Range(5, 10)) // => 0
-            Range.compareEndToEnd(new Range(0, 10), new Range(5, 10, "()")) // => 1
-        */
-       return ((Range.compareBeginToBegin(this,value) <= 0) && (Range.compareEndToEnd(this,value) >= 0))
-       ? true
-       : false;
-    } else {
-        return this._contains(value)
+                Range.compareEndToEnd(new Range(0, 10), new Range(5, 15)) // => -1
+                Range.compareEndToEnd(new Range(0, 10), new Range(5, 10)) // => 0
+                Range.compareEndToEnd(new Range(0, 10), new Range(5, 10, "()")) // => 1
+            */
+           return ((Range.compareBeginToBegin(this,value) <= 0) && (Range.compareEndToEnd(this,value) >= 0))
+           ? true
+           : false;
+        } else {
+            return this._contains(value)
+        }
     }
 }
 
@@ -205,13 +207,11 @@ Range.prototype.deserializeSelf = function (deserializer) {
     }
 };
 
-Object.defineProperty(Range.prototype,"length", {
-    get: function (serializer) {
-        if(this.isFinite) {
-            return this.end - this.begin;
-        } else {
-            return Infinity;
-        }
+defineRangeBoundsProperty("length", function () {
+    if(this.isFinite) {
+        return this.end - this.begin;
+    } else {
+        return Infinity;
     }
 });
 
