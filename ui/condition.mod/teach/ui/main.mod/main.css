@@ -6,11 +6,10 @@ html, body, .Main {
     font-family: "Helvetica Neue Light", "Lucida Grande", "Calibri", "Arial", sans-serif;
 }
 
-.Main, .checkboxes {
+.Main {
     display: flex;
     align-items: center;
     flex-direction: column;
-    flex: 1;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -21,73 +20,51 @@ header {
     color: #333;
 }
 
-.checkbox {
-    position: relative;
-    display: inline-block;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-    vertical-align: middle;
-    width: 1.5em;
-    height: 1.5em;
-    border-radius: .25em;
-    border: 1px solid;
-    fill: #fff;
+/* Required by removalStrategy: "hide" — the condition applies this class
+   to its element while the condition is false. */
+.mod-invisible {
+    display: none;
+}
+
+.case {
+    width: 640px;
+    max-width: calc(100% - 40px);
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid hsl(0, 0%, 85%);
+    border-radius: 6px;
+}
+
+.case h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    color: #333;
+}
+
+.control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    margin-top: 40px;
+    color: #333;
 }
 
-.checkbox.custom:after {
-    position: absolute;
-    content: "";
-    top: -16px;
-    left: -16px;
-    bottom: -16px;
-    right: -16px;
+.conditionBox {
+    min-height: 24px;
+    padding: 12px;
+    border: 1px dashed hsl(210, 60%, 70%);
+    border-radius: 4px;
+    background: hsl(210, 60%, 97%);
 }
 
-/* States --------------------- */
-
-.checkbox.custom.mod--disabled {
-    opacity: .5;
-    border-style: dashed;
-    pointer-events: none;
+.payload {
+    color: hsl(210, 40%, 30%);
 }
 
-/* Icon --------------------- */
-
-.CheckboxCustom-icon {
-    fill: transparent;
-}
-
-.checkbox.custom.mod--checked .CheckboxCustom-icon {
-    fill: inherit;
-}
-
-.checkbox.custom.mod--active .CheckboxCustom-icon {
-    fill: transparent;
-}
-
-
-
-/* Wireframe ---------------------------------------------------------- */
-
-.checkbox.custom {
-    fill: hsla(0,0%,0%,.7);
-    border-color: hsl(0,0%,80%);
-    background-image: -webkit-linear-gradient(top, hsl(0,0%,96%), hsl(0,0%,92%) );
-    background-image: -moz-linear-gradient(top, hsl(0,0%,96%), hsl(0,0%,92%) );
-    background-image: -ms-linear-gradient(top, hsl(0,0%,96%), hsl(0,0%,92%) );
-    background-image: linear-gradient(top, hsl(0,0%,96%), hsl(0,0%,92%) );
-    box-shadow: inset 0 1px 1px hsla(0,0%,100%,.8), inset 0 -1px 1px hsla(0,0%,0%,.04), 0 1px 0 hsla(0,0%,100%,.6);
-}
-
-.checkbox.custom.mod--active,
-.checkbox.custom.mod--checked {
-    border-color: hsla(0,0%,70%,1);
-    background-image: -webkit-linear-gradient(top, hsl(0,0%,90%), hsl(0,0%,86%) );
-    background-image: -moz-linear-gradient(top, hsl(0,0%,90%), hsl(0,0%,86%) );
-    background-image: -ms-linear-gradient(top, hsl(0,0%,90%), hsl(0,0%,86%) );
-    background-image: linear-gradient(top, hsl(0,0%,90%), hsl(0,0%,86%) );
-    box-shadow: inset 0 1px 3px hsla(0,0%,0%,.2), 0 1px 0 hsla(0,0%,100%,.6);
+.status {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: hsl(0, 0%, 45%);
 }

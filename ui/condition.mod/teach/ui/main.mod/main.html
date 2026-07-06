@@ -10,17 +10,78 @@
                 }
             },
 
-            "custom": {
+            "removeToggle": {
                 "prototype": "mod/ui/checkbox.mod",
                 "values": {
-                    "element": {"#": "checkbox-custom"}
+                    "element": {"#": "removeToggle"},
+                    "checked": {"<->": "@owner.removeValue"}
+                }
+            },
+            "removeCondition": {
+                "prototype": "mod/ui/condition.mod",
+                "values": {
+                    "element": {"#": "removeCondition"},
+                    "condition": {"<-": "@owner.removeValue"}
+                }
+            },
+            "removeStatus": {
+                "prototype": "mod/ui/text.mod",
+                "values": {
+                    "element": {"#": "removeStatus"},
+                    "value": {"<-": "'condition = ' + @owner.removeValue + ' — content should be ' + (@owner.removeValue ? 'visible (in the DOM)' : 'removed from the DOM')"}
                 }
             },
 
-            "native": {
+            "hideToggle": {
                 "prototype": "mod/ui/checkbox.mod",
                 "values": {
-                    "element": {"#": "checkbox-native"}
+                    "element": {"#": "hideToggle"},
+                    "checked": {"<->": "@owner.hideValue"}
+                }
+            },
+            "hideCondition": {
+                "prototype": "mod/ui/condition.mod",
+                "values": {
+                    "element": {"#": "hideCondition"},
+                    "removalStrategy": "hide",
+                    "condition": {"<-": "@owner.hideValue"}
+                }
+            },
+            "hideStatus": {
+                "prototype": "mod/ui/text.mod",
+                "values": {
+                    "element": {"#": "hideStatus"},
+                    "value": {"<-": "'condition = ' + @owner.hideValue + ' — content should be ' + (@owner.hideValue ? 'visible' : 'hidden with the mod-invisible class, but still in the DOM')"}
+                }
+            },
+
+            "staticTrueCondition": {
+                "prototype": "mod/ui/condition.mod",
+                "values": {
+                    "element": {"#": "staticTrueCondition"},
+                    "condition": true
+                }
+            },
+
+            "initiallyFalseToggle": {
+                "prototype": "mod/ui/checkbox.mod",
+                "values": {
+                    "element": {"#": "initiallyFalseToggle"},
+                    "checked": {"<->": "@owner.initiallyFalseValue"}
+                }
+            },
+            "initiallyFalseCondition": {
+                "prototype": "mod/ui/condition.mod",
+                "values": {
+                    "element": {"#": "initiallyFalseCondition"},
+                    "condition": {"<-": "@owner.initiallyFalseValue"}
+                }
+            },
+            "initiallyFalseStatus": {
+                "prototype": "mod/ui/text.mod",
+                "values": {
+                    "element": {"#": "initiallyFalseStatus"},
+                    "value": {"<-": "'condition = ' + @owner.initiallyFalseValue + ' — content should be ' + (@owner.initiallyFalseValue ? 'visible' : 'absent (condition was false at load)')"}
                 }
             }
         }
@@ -30,15 +91,48 @@
 <body>
     <div data-mod-id="main" class="Main">
         <header>Teach Condition Mod</header>
-        <section class="checkboxes">
-            <span data-mod-id="checkbox-custom" class="checkbox custom">
-                <svg viewBox="0 0 22 22">
-                    <path class="CheckboxCustom-icon" d="M16.7134505,5.23925421 L17.8369808,6.36278454 C18.1579559,6.68375963 18.155261,7.18928629 17.8417994,7.50274785 L9.90369523,15.4408521 C9.58826333,15.756284 9.07985473,15.7521563 8.76373192,15.4360335 L7.6402016,14.3125031 C7.63973757,14.3120391 7.63927421,14.3115747 7.63896013,14.3112519 C7.63816313,14.3104614 7.63736736,14.3096689 7.63657284,14.3088744 L4.23073621,10.9030377 C3.92224924,10.5945508 3.92161045,10.0813757 4.23773325,9.76525291 L5.36126357,8.64172251 C5.68223867,8.32074751 6.18679,8.32246711 6.49904844,8.63472551 L9.33612283,11.4717999 L15.5734872,5.23443561 C15.8889191,4.91900366 16.3973277,4.92313142 16.7134505,5.23925421 C16.7134505,5.23925421 16.3973277,4.92313142 16.7134505,5.23925421 L16.7134505,5.23925421 L16.7134505,5.23925421 Z"></path>
-                </svg>
-            </span>
 
-            <input type="checkbox" data-mod-id="checkbox-native" class="checkbox native" />
-            <span data-mod-id="text"></span>
+        <section class="case">
+            <h2>removalStrategy: "remove" (default)</h2>
+            <label class="control">
+                <input type="checkbox" data-mod-id="removeToggle" />
+                condition
+            </label>
+            <div data-mod-id="removeCondition" class="conditionBox">
+                <span class="payload">Hello — this content is taken out of the DOM while the condition is false.</span>
+            </div>
+            <span data-mod-id="removeStatus" class="status"></span>
+        </section>
+
+        <section class="case">
+            <h2>removalStrategy: "hide"</h2>
+            <label class="control">
+                <input type="checkbox" data-mod-id="hideToggle" />
+                condition
+            </label>
+            <div data-mod-id="hideCondition" class="conditionBox">
+                <span class="payload">Foo — this content stays in the DOM and is hidden with the mod-invisible class while the condition is false.</span>
+            </div>
+            <span data-mod-id="hideStatus" class="status"></span>
+        </section>
+
+        <section class="case">
+            <h2>static condition: true</h2>
+            <div data-mod-id="staticTrueCondition" class="conditionBox">
+                <span class="payload">Bar — serialized with a static condition of true; this content should always be visible.</span>
+            </div>
+        </section>
+
+        <section class="case">
+            <h2>condition false at load</h2>
+            <label class="control">
+                <input type="checkbox" data-mod-id="initiallyFalseToggle" />
+                condition
+            </label>
+            <div data-mod-id="initiallyFalseCondition" class="conditionBox">
+                <span class="payload">Late — this content is cleared during deserialization and only appears once the condition becomes true.</span>
+            </div>
+            <span data-mod-id="initiallyFalseStatus" class="status"></span>
         </section>
     </div>
 </body>
