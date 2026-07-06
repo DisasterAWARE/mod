@@ -156,10 +156,13 @@ exports.Condition = Component.specialize( /** @lends Condition.prototype # */ {
 
     draw: {
         value: function () {
+            // "montage-invisible" is toggled alongside "mod-invisible" for
+            // backward compatibility: apps migrated from montage declare their
+            // hiding rules (and compound selectors) against the legacy class.
             if (this.condition) {
-                this.element.classList.remove("mod-invisible");
+                this.element.classList.remove("mod-invisible", "montage-invisible");
             } else {
-                this.element.classList.add("mod-invisible");
+                this.element.classList.add("mod-invisible", "montage-invisible");
             }
 
            if (this._needsClearDomContent) {
