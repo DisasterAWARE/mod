@@ -303,6 +303,10 @@ exports.DataTrigger.prototype = Object.create(
             configurable: true,
             writable: true,
             value: function (object, shouldFetch, _initialValue) {
+                var isDerivedProperty = !!this.propertyDescriptor.definition,
+                    isRelationshipProperty = !!this.propertyDescriptor._valueDescriptorReference,
+                    isCollectionProperty = this.isToMany || this.propertyDescriptor.collectionValueType !== undefined,
+                    shouldSkipGetterFetchForScalar = !isDerivedProperty && !isRelationshipProperty && !isCollectionProperty;
                 // if(shouldFetch === undefined && this._service.rootService._objectsBeingMapped.has(object) && !object.snapshot) {
                 //     shouldFetch = false;
                 // }
@@ -314,6 +318,7 @@ exports.DataTrigger.prototype = Object.create(
                 // ) {
                 if (
                     shouldFetch !== false &&
+                    !shouldSkipGetterFetchForScalar &&
                     this._getValueStatus(object) !== null &&
                     (!this.propertyDescriptor.definition || !this.propertyDescriptor.isDerived) &&
                     !this._service.isObjectCreated(object)
@@ -346,6 +351,22 @@ exports.DataTrigger.prototype = Object.create(
                 // Return the property's current value.
                 return this._valueGetter ? this._valueGetter.call(object) : object[this._privatePropertyName];
             },
+        },
+
+        _localValueForObject: {
+            value: function (object) {
+                var value = object[this._privatePropertyName],
+                    descriptor;
+
+                if (value === undefined) {
+                    descriptor = Object.getOwnPropertyDescriptor(object, this._propertyName);
+                    if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, "value")) {
+                        value = descriptor.value;
+                    }
+                }
+
+                return value;
+            }
         },
 
         /**
@@ -1060,12 +1081,21 @@ exports.DataTrigger.prototype = Object.create(
                          * on object by the time we get back here. So since it wasn't done, we do it here.
                          */
                         if (propertyValue === null) {
-                            object[self._propertyName] = propertyValue;
+                            let localValue = self._localValueForObject(object);
+                            if (isUpdate || localValue === undefined || localValue === null) {
+                                object[self._propertyName] = propertyValue;
+                            } else {
+                                console.warn(
+                                    "property " + self._propertyName + "'s value was resolved by fetch to null,",
+                                    "but current value is now: ",
+                                    localValue
+                                );
+                            }
                         } else if (propertyValue) {
                             /**
                              * If there's no value at all on the object, we go ahead and set it
                              */
-                            let localValue = object[self._privatePropertyName];
+                            let localValue = self._localValueForObject(object);
                             if (!localValue) {
                                 if (self.propertyDescriptor.cardinality > 1) {
                                     object[self._propertyName] = propertyValue;

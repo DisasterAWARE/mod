@@ -1,5 +1,6 @@
 var DataService = require("mod/data/service/data-service").DataService,
     DataObjectDescriptor = require("mod/data/model/data-object-descriptor").DataObjectDescriptor,
+    ExpressionDataMapping = require("mod/data/service/expression-data-mapping").ExpressionDataMapping,
     ModuleObjectDescriptor = require("mod/core/meta/module-object-descriptor").ModuleObjectDescriptor,
     ModuleReference = require("mod/core/module-reference").ModuleReference,
     RawDataService = require("mod/data/service/raw-data-service").RawDataService,
@@ -7,6 +8,8 @@ var DataService = require("mod/data/service/data-service").DataService,
 
 const AnimatedMovieDescriptor = require("spec/data/logic/model/animated-movie.mjson").montageObject;
 const CategoyDescriptor = require("spec/data/logic/model/category.mjson").montageObject;
+const ConstructedModelDescriptor = require("spec/data/logic/model/constructed-model.mjson").montageObject;
+const ConstructedSpecializedModelDescriptor = require("spec/data/logic/model/constructed-specialized-model.mjson").montageObject;
 const movieDescriptor = require("spec/data/logic/model/movie.mjson").montageObject;
 
 describe("A DataService", function () {
@@ -454,6 +457,91 @@ describe("A DataService", function () {
     xit("has a registerService() method that needs to be further tested", function () {});
 
     xit("has a mainService class variable that needs to be further tested", function () {});
+
+    it("runs ES class constructors when creating data objects", async function () {
+        var mainService = new DataService(),
+            modelService = new RawDataService(),
+            model;
+
+        defaultEventManager.application.mainService = mainService;
+        await mainService.registerChildService(modelService, ConstructedModelDescriptor);
+
+        model = mainService.createDataObject(ConstructedModelDescriptor);
+
+        expect(model.wasConstructed).toBe(true);
+    });
+
+    it("keeps DataTrigger accessors after running ES class constructors", async function () {
+        var mainService = new DataService(),
+            modelService = new RawDataService(),
+            model;
+
+        defaultEventManager.application.mainService = mainService;
+        await mainService.registerChildService(modelService, ConstructedModelDescriptor);
+
+        model = mainService.createDataObject(ConstructedModelDescriptor);
+
+        expect(model.wasConstructed).toBe(true);
+        expect(model.computedValue).toBe("constructed");
+    });
+
+    it("runs ES parent and specialize constructors when creating data objects", async function () {
+        var mainService = new DataService(),
+            modelService = new RawDataService(),
+            model;
+
+        defaultEventManager.application.mainService = mainService;
+        await mainService.registerChildService(modelService, ConstructedSpecializedModelDescriptor);
+
+        model = mainService.createDataObject(ConstructedSpecializedModelDescriptor);
+
+        expect(model.wasConstructed).toBe(true);
+        expect(model.wasSpecializedConstructed).toBe(true);
+    });
+
+    it("does not fetch scalar properties when their getter is read", async function () {
+        var mainService = new DataService(),
+            modelService = new RawDataService(),
+            model;
+
+        defaultEventManager.application.mainService = mainService;
+        await mainService.registerChildService(modelService, ConstructedModelDescriptor);
+        spyOn(modelService, "fetchObjectProperty").and.returnValue(Promise.resolve());
+
+        model = mainService.createDataObject(ConstructedModelDescriptor);
+        mainService.unregisterCreatedDataObject(model);
+
+        expect(model.id).toBeUndefined();
+        expect(modelService.fetchObjectProperty).not.toHaveBeenCalled();
+
+        model._id = "constructed-model-1";
+
+        expect(model.id).toBe("constructed-model-1");
+        expect(modelService.fetchObjectProperty).not.toHaveBeenCalled();
+    });
+
+    it("does not fetch primary-key scalar properties when they are in the snapshot", async function () {
+        var mainService = new DataService(),
+            modelService = new RawDataService(),
+            mapping = new ExpressionDataMapping().initWithServiceObjectDescriptorAndSchema(modelService, ConstructedModelDescriptor),
+            model;
+
+        mapping.rawDataPrimaryKeys = ["id"];
+        mapping.addObjectMappingRule("id", {"<-": "id"});
+        modelService.addMappingForType(mapping, ConstructedModelDescriptor);
+
+        defaultEventManager.application.mainService = mainService;
+        await mainService.registerChildService(modelService, ConstructedModelDescriptor);
+
+        model = modelService.getDataObject(ConstructedModelDescriptor, {id: "constructed-model-2"});
+        model._id = undefined;
+        spyOn(modelService, "fetchObjectProperty").and.returnValue(Promise.resolve());
+
+        await mainService.getObjectProperties(model, "id");
+
+        expect(model.id).toBe("constructed-model-2");
+        expect(modelService.fetchObjectProperty).not.toHaveBeenCalled();
+    });
 
     describe("saveObject()", () => {
         let animatedMovieService;

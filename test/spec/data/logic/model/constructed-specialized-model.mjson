@@ -1,0 +1,33 @@
+{
+    "root": {
+        "prototype": "mod/core/meta/module-object-descriptor",
+        "values": {
+            "name": "ConstructedSpecializedModel",
+            "propertyDescriptors": [
+                {"@": "wasConstructed"},
+                {"@": "wasSpecializedConstructed"}
+            ],
+            "objectDescriptorModule": {
+                "%": "spec/data/logic/model/constructed-specialized-model.mjson"
+            },
+            "exportName": "ConstructedSpecializedModel",
+            "module": {
+                "%": "spec/data/logic/model/constructed-model"
+            }
+        }
+    },
+    "wasConstructed": {
+        "prototype": "mod/core/meta/property-descriptor",
+        "values": {
+            "name": "wasConstructed",
+            "valueType": "boolean"
+        }
+    },
+    "wasSpecializedConstructed": {
+        "prototype": "mod/core/meta/property-descriptor",
+        "values": {
+            "name": "wasSpecializedConstructed",
+            "valueType": "boolean"
+        }
+    }
+}

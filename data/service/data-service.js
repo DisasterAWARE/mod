@@ -2874,15 +2874,18 @@ DataService.addClassProperties(
          */
         _getOrUpdateObjectProperties: {
             value: function (object, names, start, isUpdate) {
-                var triggers, trigger, promises, promise, i, n;
+                var triggers, trigger, promises, promise, propertyName, i, n;
                 // Request each data value separately, collecting unique resulting
                 // promises into an array and a set, but avoid creating any array
                 // or set unless that's necessary.
                 triggers = this._getTriggersForObject(object);
                 for (i = start, n = names.length; i < n; i += 1) {
-                    trigger = triggers && triggers[names[i]];
+                    propertyName = names[i];
+                    trigger = triggers && triggers[propertyName];
                     promise = !trigger
                         ? this.nullPromise
+                        : !isUpdate && this._resolvePrimaryKeyScalarFromSnapshot(object, propertyName, trigger)
+                            ? this.nullPromise
                         : isUpdate
                             ? trigger.updateObjectProperty(object)
                             : trigger.getObjectProperty(object);
@@ -2910,6 +2913,64 @@ DataService.addClassProperties(
                     ? promises.array[0]
                     : Promise.all(promises.array).then(this.nullFunction);
             },
+        },
+
+        _resolvePrimaryKeyScalarFromSnapshot: {
+            value: function (object, propertyName, trigger) {
+                var propertyDescriptor = trigger && trigger.propertyDescriptor,
+                    isRelationshipProperty = !!(propertyDescriptor && propertyDescriptor._valueDescriptorReference),
+                    isCollectionProperty = trigger && (trigger.isToMany || propertyDescriptor && propertyDescriptor.collectionValueType !== undefined),
+                    objectDescriptor,
+                    mapping,
+                    rule,
+                    rawDataPrimaryKeys,
+                    rawPropertyName,
+                    isRawDataPrimaryKey,
+                    dataIdentifierService,
+                    snapshot,
+                    snapshotValue;
+
+                if (!propertyDescriptor || isRelationshipProperty || isCollectionProperty) {
+                    return false;
+                }
+
+                objectDescriptor = this.objectDescriptorForObject(object);
+                mapping = objectDescriptor && this.mappingForType && this.mappingForType(objectDescriptor);
+                rule = mapping && mapping.objectMappingRuleForPropertyName(propertyName);
+                rawDataPrimaryKeys = mapping && mapping.rawDataPrimaryKeys;
+                rawPropertyName = rule && rule.requirements && rule.requirements.length === 1 && rule.requirements[0];
+                isRawDataPrimaryKey = rawDataPrimaryKeys &&
+                    (typeof rawDataPrimaryKeys.indexOf === "function" ?
+                        rawDataPrimaryKeys.indexOf(rawPropertyName) !== -1 :
+                        typeof rawDataPrimaryKeys.has === "function" && rawDataPrimaryKeys.has(rawPropertyName));
+
+                if (!rawPropertyName || !isRawDataPrimaryKey) {
+                    return false;
+                }
+
+                if (object[trigger._privatePropertyName] !== undefined) {
+                    return true;
+                }
+
+                snapshot = typeof this.snapshotForObject === "function" && this.snapshotForObject(object);
+                if (!snapshot) {
+                    dataIdentifierService = object.dataIdentifier && object.dataIdentifier.dataService;
+                    snapshot = dataIdentifierService &&
+                        dataIdentifierService !== this &&
+                        typeof dataIdentifierService.snapshotForObject === "function" &&
+                        dataIdentifierService.snapshotForObject(object);
+                }
+                if (snapshot && Object.prototype.hasOwnProperty.call(snapshot, rawPropertyName)) {
+                    snapshotValue = snapshot[rawPropertyName];
+                    if (snapshotValue !== undefined) {
+                        object[trigger._privatePropertyName] = snapshotValue;
+                        trigger._setValueStatus(object, null);
+                        return true;
+                    }
+                }
+
+                return false;
+            }
         },
 
         /**
@@ -3398,10 +3459,13 @@ DataService.addClassProperties(
             value: function (type, dataIdentifier) {
                 var objectDescriptor = this.objectDescriptorForType(type),
                     prototype = this._getPrototypeForType(objectDescriptor),
-                    object = Object.create(prototype),
+                    object,
                     constructor = prototype && prototype.constructor,
                     specializeConstructor = constructor && constructor.specializeConstructor,
+                    shouldCallConstructorWithNew = typeof constructor === "function" &&
+                        constructor !== Object,
                     dataIdentifierDataService = dataIdentifier && dataIdentifier.dataService,
+                    originalDataIdentifier,
                     delegateDataIdentifier,
                     constructedObject;
                 // constructor = this._getPrototypeForType(objectDescriptor).constructor,
@@ -3410,8 +3474,8 @@ DataService.addClassProperties(
 
                 ObjectDescriptor.prepareToDispatchDataOperation(objectDescriptor);
 
-
-                if (object) {
+                if (prototype) {
+                    originalDataIdentifier = dataIdentifier;
                     delegateDataIdentifier = dataIdentifierDataService ?
                         dataIdentifierDataService.callDelegateMethod(
                             "dataIdentifierForRawDataServiceCreatingObjectWithDataIdentifier",
@@ -3420,28 +3484,34 @@ DataService.addClassProperties(
                         ) ?? dataIdentifier :
                         dataIdentifier;
 
+                    dataIdentifier = delegateDataIdentifier;
+
+                    if (shouldCallConstructorWithNew) {
+                        object = new constructor();
+                        if (Object.getPrototypeOf(object) !== prototype) {
+                            Object.setPrototypeOf(object, prototype);
+                        }
+                        this.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
+                    } else {
+                        object = Object.create(prototype);
+                        //This needs to be done before a user-land code can attempt to do
+                        //anything inside its constructor, like creating a binding on a relationships
+                        //causing a trigger to fire, not knowing about the match between identifier
+                        //and object... If that's feels like a real situation, it is.
+                        this.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
+                    }
+
                     /*
                     Our delegate overrode our dataIdentifier, we're going to keep a reference from
-                    dataIdentifier to the object
-                */
-                    if (delegateDataIdentifier !== dataIdentifier) {
-                        this.mainService.recordObjectForDataIdentifier(object, dataIdentifier);
-                        dataIdentifier = delegateDataIdentifier;
+                    the original dataIdentifier to the object.
+                    */
+                    if (delegateDataIdentifier !== originalDataIdentifier) {
+                        this.mainService.recordObjectForDataIdentifier(object, originalDataIdentifier);
                     }
-                    //This needs to be done before a user-land code can attempt to do
-                    //anything inside its constructor, like creating a binding on a relationships
-                    //causing a trigger to fire, not knowing about the match between identifier
-                    //and object... If that's feels like a real situation, it is.
-                    this.registerUniqueObjectWithDataIdentifier(object, dataIdentifier);
-                    // if (dataIdentifier && this.isUniquing) {
-                    //     this.recordDataIdentifierForObject(dataIdentifier, object);
-                    //     this.recordObjectForDataIdentifier(object, dataIdentifier);
-                    // }
 
-                    // Legacy Montage constructors initialize template defaults.
-                    // Mod stores them separately because class constructors
-                    // cannot be invoked for Object.create() instances.
-                    if (typeof specializeConstructor === "function") {
+                    // Legacy Montage constructors initialize template defaults
+                    // when there is no class constructor available to invoke.
+                    if (!shouldCallConstructorWithNew && typeof specializeConstructor === "function") {
                         constructedObject = specializeConstructor.call(object);
                         object = constructedObject || object;
                     }

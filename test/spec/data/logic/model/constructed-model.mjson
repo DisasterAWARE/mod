@@ -1,0 +1,50 @@
+{
+    "root": {
+        "prototype": "mod/core/meta/module-object-descriptor",
+        "values": {
+            "name": "ConstructedModel",
+            "propertyDescriptors": [
+                {"@": "id"},
+                {"@": "baseValue"},
+                {"@": "computedValue"},
+                {"@": "wasConstructed"}
+            ],
+            "objectDescriptorModule": {
+                "%": "spec/data/logic/model/constructed-model.mjson"
+            },
+            "exportName": "ConstructedModel",
+            "module": {
+                "%": "spec/data/logic/model/constructed-model"
+            }
+        }
+    },
+    "id": {
+        "prototype": "mod/core/meta/property-descriptor",
+        "values": {
+            "name": "id",
+            "valueType": "string"
+        }
+    },
+    "baseValue": {
+        "prototype": "mod/core/meta/property-descriptor",
+        "values": {
+            "name": "baseValue",
+            "valueType": "string"
+        }
+    },
+    "computedValue": {
+        "prototype": "mod/core/meta/property-descriptor",
+        "values": {
+            "name": "computedValue",
+            "valueType": "string",
+            "definition": "baseValue"
+        }
+    },
+    "wasConstructed": {
+        "prototype": "mod/core/meta/property-descriptor",
+        "values": {
+            "name": "wasConstructed",
+            "valueType": "boolean"
+        }
+    }
+}
