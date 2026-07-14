@@ -322,9 +322,12 @@ exports.AuthorizationManager = Montage.specialize(/** @lends AuthorizationManage
                 authorizationPromises = this._authorizationsForDataService(dataService);
 
                 if (authorizationPromises.length) {
-                    return Promise.all(authorizationPromises);
+                    return Promise.all(authorizationPromises).then(function (authorizations) {
+                        self._logAuthorizationDecision(dataService, "cached", authorizations);
+                        return authorizations;
+                    });
                 } else if (dataService.authorizationPolicy === AuthorizationPolicy.ON_DEMAND && !didFailAuthorization) {
-                    return Promise.resolve(null);
+                    return this._authorizationsForDataServiceIfProviderCanAuthorizeSelf(dataService);
                 } else {
                     return self._notifyDataService(dataService).then(function () {
                         authorizationPromises = self._authorizationsForDataService(dataService, true);
@@ -342,6 +345,89 @@ exports.AuthorizationManager = Montage.specialize(/** @lends AuthorizationManage
                     });
                 }
             }
+        }
+    },
+
+    _logAuthorizationDecision: {
+        value: function (dataService, branch, authorizations) {
+            var providerIDs = dataService.authorizationServices || [],
+                provider, shouldLog = false, i;
+
+            for (i = 0; i < providerIDs.length; i++) {
+                provider = this._providersByModuleID.get(providerIDs[i]);
+                shouldLog = shouldLog || !!(provider && provider.configuration && provider.configuration.isDebugging);
+            }
+
+            if (shouldLog) {
+                console.debug("[AuthorizationManager] authorization decision", {
+                    service: dataService.name || dataService.constructor.name,
+                    branch: branch,
+                    providerIDs: providerIDs,
+                    authorizationCount: authorizations && authorizations.length,
+                    isValid: authorizations && authorizations.map(function (authorization) {
+                        return !!(authorization && authorization.isValid);
+                    }),
+                    hasHeader: authorizations && authorizations.map(function (authorization) {
+                        return !!(authorization && authorization.header && authorization.header.Authorization);
+                    })
+                });
+            }
+        }
+    },
+
+    _authorizationsForDataServiceIfProviderCanAuthorizeSelf: {
+        value: function (dataService) {
+            var self = this,
+                promises = [],
+                dataServiceInfo = Montage.getInfoForObject(dataService),
+                providerIDs = dataService.authorizationServices,
+                providerID, i, n;
+
+            for (i = 0, n = providerIDs.length; i < n; ++i) {
+                providerID = providerIDs[i];
+                this._registerDataServiceWithProviderID(providerID, dataService);
+                promises.push(this._authorizationForDataServiceIfProviderCanAuthorizeSelf(
+                    providerID,
+                    dataService,
+                    dataServiceInfo.require
+                ));
+            }
+
+            return Promise.all(promises).then(function (authorizations) {
+                authorizations = authorizations.filter(function (authorization) {
+                    return !!authorization;
+                });
+                self._logAuthorizationDecision(dataService, "silent", authorizations);
+                return authorizations.length ? authorizations : null;
+            });
+        }
+    },
+
+    _authorizationForDataServiceIfProviderCanAuthorizeSelf: {
+        value: function (moduleID, dataService, require) {
+            var self = this;
+
+            return this._providerWithModuleID(moduleID, require).then(function (provider) {
+                if (!provider || typeof provider.canAuthorizeSelf !== "function") {
+                    return null;
+                }
+                return Promise.resolve(provider.canAuthorizeSelf()).then(function (canAuthorizeSelf) {
+                    if (provider.configuration && provider.configuration.isDebugging) {
+                        console.debug("[AuthorizationManager] silent authorization decision", {
+                            service: dataService.name || dataService.constructor.name,
+                            providerModuleID: moduleID,
+                            provider: provider.constructor && provider.constructor.name,
+                            usesRegisteredProvider: self._providersByModuleID.get(moduleID) === provider,
+                            canAuthorizeSelf: canAuthorizeSelf
+                        });
+                    }
+                    return canAuthorizeSelf ?
+                        self._authorizationForServiceFromProvider(moduleID, dataService, true) :
+                        null;
+                }).catch(function () {
+                    return null;
+                });
+            });
         }
     },
 
