@@ -1224,6 +1224,20 @@ TestPageLoader.queueTest("draw/draw", function (testPage) {
                     aComponent.element = anElement;
                     expect(aComponent.classList.contains("foo")).toBeTruthy();
                 });
+                it("should retain an application class while the element is reinitialized", function () {
+                    aComponent = new (Component.specialize({hasTemplate: {value: false}}))();
+                    var anElement = document.createElement("div");
+
+                    aComponent.classList.add("applicationClass");
+                    anElement.classList.add("templateClass");
+
+                    expect(function () {
+                        aComponent.element = anElement;
+                        aComponent._initializeClassListFromElement(anElement);
+                    }).not.toThrow();
+                    expect(aComponent.classList.contains("applicationClass")).toBeTruthy();
+                    expect(aComponent.classList.contains("templateClass")).toBeTruthy();
+                });
                 it("should not fail when classList is used in constructor", function () {
                     expect(function () {
                         new (Component.specialize( {

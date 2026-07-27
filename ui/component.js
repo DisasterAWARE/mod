@@ -4201,13 +4201,9 @@ Component.addClassProperties({
             if (element && element.classList && element.classList.length > 0) {
                 // important to initializae the classList first, so that the listener doesn't get installed.
                 if (!this._classList) {
-                    // we don't want to subscribe then unsubscribe and subscribe again to the ClassList Changes,
-                    // So we don't access to the getter of the property classList.
+                    // Avoid the classList getter until the initial classes have
+                    // been copied from the element.
                     this._classList = new Set();
-                } else {
-                    if (this._unsubscribeToClassListChanges) {
-                        this._unsubscribeToClassListChanges();
-                    }
                 }
 
                 var classList = element.classList;
@@ -4216,7 +4212,11 @@ Component.addClassProperties({
                     this._classList.add(classList[i]);
                 }
 
-                this._subscribeToToClassListChanges();
+                // The same Set survives host/template replacement. Keeping its
+                // listener avoids cancelling it while range changes are active.
+                if (!this._unsubscribeToClassListChanges) {
+                    this._subscribeToToClassListChanges();
+                }
             }
         },
     },
