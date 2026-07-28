@@ -1366,11 +1366,14 @@ Object.defineProperties(
                             propertyDescriptor = {
                                 get: function (shouldFetch) {
                                     if (!this.getBinding(descriptor.name)) {
-                                        /**
-                                         * This allows us to eventually fetch directly the equivalent of the expression and set it directly.
+                                        /*
+                                         * A derived property must remain driven by its definition.
+                                         * Falling back to its private value here makes the binding
+                                         * self-referential and stops observing the definition after
+                                         * the first change.
                                          */
                                         this.defineBinding(descriptor.name, {
-                                            "<-": "_" + descriptor.name + " || (" + definition + ")",
+                                            "<-": definition,
                                         });
                                     }
                                     return trigger._getValue(this, shouldFetch);
