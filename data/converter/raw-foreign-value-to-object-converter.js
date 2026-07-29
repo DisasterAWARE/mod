@@ -189,7 +189,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
 
 
                 if (self.serviceIdentifier) {
-                    criteria.parameters.serviceIdentifier = this.serviceIdentifier;
+                    criteria.parameters.serviceIdentifier = self.serviceIdentifier;
                 }
 
                 var fetchPromise = self._registeredFetchPromiseMapForObjectDescriptorCriteria(typeToFetch,criteria);
@@ -330,10 +330,16 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
                     */
 
                         fetchPromise = service.rootService.fetchData(query)
-                                .then(function(value) {
-                                    self._unregisterFetchPromiseForObjectDescriptorCriteria(typeToFetch, criteria);
-                                    return value;
-                                });
+                                .then(
+                                    function(value) {
+                                        self._unregisterFetchPromiseForObjectDescriptorCriteria(typeToFetch, criteria);
+                                        return value;
+                                    },
+                                    function(error) {
+                                        self._unregisterFetchPromiseForObjectDescriptorCriteria(typeToFetch, criteria);
+                                        throw error;
+                                    }
+                                );
 
                         self._registerFetchPromiseForObjectDescriptorCriteria(fetchPromise, typeToFetch, criteria);
                     } else {

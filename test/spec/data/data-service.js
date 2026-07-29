@@ -3,6 +3,7 @@ var DataService = require("mod/data/service/data-service").DataService,
     ExpressionDataMapping = require("mod/data/service/expression-data-mapping").ExpressionDataMapping,
     ModuleObjectDescriptor = require("mod/core/meta/module-object-descriptor").ModuleObjectDescriptor,
     ModuleReference = require("mod/core/module-reference").ModuleReference,
+    Promise = require("mod/core/promise").Promise,
     RawDataService = require("mod/data/service/raw-data-service").RawDataService,
     defaultEventManager = require("mod/core/event/event-manager").defaultEventManager;
 
@@ -541,6 +542,61 @@ describe("A DataService", function () {
 
         expect(model.id).toBe("constructed-model-2");
         expect(modelService.fetchObjectProperty).not.toHaveBeenCalled();
+    });
+
+    it("propagates relationship mapping failures and clears mapping state", function () {
+        var service = new DataService(),
+            objectDescriptor = {},
+            object = {
+                objectDescriptor: objectDescriptor
+            },
+            propertyDescriptor = {
+                _valueDescriptorReference: {}
+            },
+            expectedError = new Error("relationship failed"),
+            mapping = {
+                mapObjectToCriteriaSourceForProperty: function () {
+                    return null;
+                },
+                mapRawDataToObjectProperty: function () {
+                    return Promise.reject(expectedError);
+                }
+            };
+
+        service.objectDescriptorForObject = function () {
+            return objectDescriptor;
+        };
+        service.mappingForType = function () {
+            return mapping;
+        };
+        service.snapshotForObject = function () {
+            return {};
+        };
+
+        function expectRejectedFetch(criteriaSourceResult) {
+            mapping.mapObjectToCriteriaSourceForProperty = function () {
+                return criteriaSourceResult;
+            };
+
+            return service._fetchObjectPropertyWithPropertyDescriptor(
+                object,
+                "relationship",
+                propertyDescriptor,
+                false
+            ).then(
+                function () {
+                    throw new Error("Expected relationship mapping to reject");
+                },
+                function (error) {
+                    expect(error).toBe(expectedError);
+                    expect(service._objectsBeingMapped.has(object)).toBe(false);
+                }
+            );
+        }
+
+        return expectRejectedFetch(null).then(function () {
+            return expectRejectedFetch(Promise.resolve());
+        });
     });
 
     describe("saveObject()", () => {

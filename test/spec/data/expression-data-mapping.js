@@ -1,6 +1,7 @@
 var ExpressionDataMapping = require("mod/data/service/expression-data-mapping").ExpressionDataMapping,
     CategoryService = require("spec/data/logic/service/category-service").CategoryService,
     CountryService = require("spec/data/logic/service/country-service").CountryService,
+    Criteria = require("mod/core/criteria").Criteria,
     DataService = require("mod/data/service/data-service").DataService,
     DateConverter = require("mod/core/converter/date-converter").DateConverter,
     ModuleObjectDescriptor = require("mod/core/meta/module-object-descriptor").ModuleObjectDescriptor,
@@ -232,6 +233,64 @@ describe("An Expression Data Mapping", function() {
 
     it("can be created", function () {
         expect(new ExpressionDataMapping()).toBeDefined();
+    });
+
+    it("retries rejected foreign relationship fetches", function () {
+        var converter = new RawForeignValueToObjectConverter(),
+            criteria = new Criteria().initWithExpression("id == $.id", {
+                id: "foreign-1"
+            }),
+            expectedError = new Error("foreign fetch failed"),
+            fetchCount = 0,
+            capturedQuery,
+            typeToFetch = {
+                name: "ForeignType"
+            },
+            service = {
+                rootService: {
+                    fetchData: function (query) {
+                        capturedQuery = query;
+                        fetchCount += 1;
+                        return fetchCount === 1 ?
+                            Promise.reject(expectedError) :
+                            Promise.resolve(["resolved"]);
+                    }
+                },
+                objectWithDescriptorMatchingRawDataPrimaryKeyCriteria: function () {
+                    return null;
+                },
+                mappingForType: function () {
+                    return null;
+                }
+            };
+
+        converter.combinesFetchData = false;
+        converter.service = service;
+        converter.serviceIdentifier = "ForeignService";
+
+        return converter._fetchConvertedDataForObjectDescriptorCriteria(
+            typeToFetch,
+            criteria,
+            null,
+            false
+        ).then(
+            function () {
+                throw new Error("Expected foreign relationship fetch to reject");
+            },
+            function (error) {
+                expect(error).toBe(expectedError);
+                return converter._fetchConvertedDataForObjectDescriptorCriteria(
+                    typeToFetch,
+                    criteria,
+                    null,
+                    false
+                );
+            }
+        ).then(function (value) {
+            expect(value).toEqual(["resolved"]);
+            expect(fetchCount).toBe(2);
+            expect(capturedQuery.criteria.parameters.serviceIdentifier).toBe("ForeignService");
+        });
     });
 
     registrationPromise = Promise.all([

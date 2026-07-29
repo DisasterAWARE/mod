@@ -2822,6 +2822,7 @@ DataService.addClassProperties(
                                             },
                                             function (failed) {
                                                 self._objectsBeingMapped.delete(object);
+                                                throw failed;
                                             }
                                         );
                                     }
@@ -2856,6 +2857,7 @@ DataService.addClassProperties(
                                     },
                                     function (failed) {
                                         self._objectsBeingMapped.delete(object);
+                                        throw failed;
                                     }
                                 );
                             }
