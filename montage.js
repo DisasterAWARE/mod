@@ -32,7 +32,9 @@
     }
 }(this, function (require, exports, module) {
 
-    "use strict";
+    // Mop inlines legacy specialize modules into this factory. Keep the factory
+    // non-strict until callers using this.super() have been migrated away from
+    // Function.caller-based super resolution.
 
     // reassigning causes eval to not use lexical scope.
     //var globalEval = eval,

@@ -352,9 +352,10 @@ exports.Loader = Component.specialize( /** @lends Loader.prototype # */ {
                 return self._mainLoadedCallback(exports);
             })
             .catch((error) => {
-                if(error.message.includes("main.reel")) {
-                    console.warn("Please rename main.mod to main.mod")
+                if (!self._shouldLoadLegacyMainModuleForError(error)) {
+                    throw error;
                 }
+                console.warn("ui/main.mod was not found; falling back to ui/main.reel");
                 return global.require.async(self.legacyMainModule)
                 .then(function (exports) {
                     if (!(self.mainName in exports)) {
@@ -366,6 +367,15 @@ exports.Loader = Component.specialize( /** @lends Loader.prototype # */ {
                     throw error;
                 });
             });
+        }
+    },
+
+    _shouldLoadLegacyMainModuleForError: {
+        value: function (error) {
+            var message = error && (error.message || error.stack) || String(error);
+
+            return message.indexOf("Can't XHR") !== -1 &&
+                message.indexOf(this.mainModule) !== -1;
         }
     },
 

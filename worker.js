@@ -246,6 +246,8 @@ var worker,
                 Require.Compiler = compiler;
                 Require.overlays = ["worker", "browser", "mod", "montage"];
                 Require.makeLoader = function (config) {
+                    // Workers fetch module text and cannot inject script elements.
+                    config.useScriptInjection = false;
                     return Require.ModLoader(config,
                         Require.MappingsLoader(
                             config,
