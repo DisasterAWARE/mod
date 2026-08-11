@@ -31,7 +31,7 @@ const Object = global.Object, //Cache for scope traversal performance
     TransactionDescriptor = require("../model/transaction.mjson").montageObject,
     TransactionEvent = require("../model/transaction-event").TransactionEvent,
     ObjectStoreDescriptor = require("../model/object-store.mjson").montageObject,
-    ObjectPropertyStoreDescriptor = require("../model/object-property-store.mjson").montageObject
+    ObjectPropertyStoreDescriptor = require("../model/object-property-store.mjson").montageObject,
     isArray = Array.isArray;
 
 require("core/extras/string");
@@ -455,7 +455,7 @@ DataService.addClassProperties(
             },
             set: function (value) {
                 if (value !== this._childServiceTypes) {
-                    this._childServiceTypes = value;
+                    this.__childServiceTypes = value;
                 }
             },
         },
@@ -770,7 +770,7 @@ DataService.addClassProperties(
                     }
                 }
                 // Set the new child service's parent.
-                child._parentService = child.nextTarget = this;
+                child._parentService = this;
             },
         },
 
