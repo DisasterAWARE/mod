@@ -3166,7 +3166,7 @@ Component.addClassProperties({
      * @property {boolean}
      * @default false
      */
-    needsDraw: {
+     needsDraw: {
         enumerable: false,
         get: function () {
             return this._needsDraw;

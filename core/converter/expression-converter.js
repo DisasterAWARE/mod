@@ -5,7 +5,7 @@
 var Converter = require("./converter").Converter,
     parse = require("../../core/frb/parse"),
     Scope = require("../../core/frb/scope"),
-    compile = require("../../core/frb/compile-evaluator")
+    compile = require("../../core/frb/compile-evaluator"),
     deprecate = require("../deprecate");
 
 /**
@@ -217,4 +217,3 @@ exports.ExpressionConverter = Converter.specialize( /** @lends TrimConverter# */
     }
 
 });
-

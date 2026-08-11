@@ -1,4 +1,4 @@
-var EMPTY_SLOT = Object.freeze(Object.create(null))
+var EMPTY_SLOT = Object.freeze(Object.create(null)),
     defaultObjectFactory = function() {
         return {};
     };
@@ -62,4 +62,3 @@ exports.ObjectPool = function(objectFactory, objectReseter) {
 			return objPool.length;
 		}
     };
-
