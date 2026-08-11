@@ -4,7 +4,7 @@ var Montage = require("../../core/core").Montage,
     Set = require("../../core/collections/set"),
     application = require("../../core/application").application,
     AuthorizationPolicy = require("./authorization-policy").AuthorizationPolicy,
-    MANAGER_PANEL_MODULE = "ui/authorization-manager-panel.mod";
+    MANAGER_PANEL_MODULE = "ui/authorization/authorization-manager-panel.mod";
 
 
 /**
@@ -68,7 +68,7 @@ exports.AuthorizationManager = Montage.specialize(/** @lends AuthorizationManage
                 this._managerPanelPromise = Promise.resolve(this.authorizationManagerPanel);
             } else if (!this._managerPanelPromise) {
                 moduleId = this.callDelegateMethod("authorizationManagerWillLoadAuthorizationManagerPanel", this, MANAGER_PANEL_MODULE) || MANAGER_PANEL_MODULE;
-                this._managerPanelPromise = require.async(moduleId).bind(this).then(function (exports) {
+                this._managerPanelPromise = require.async(moduleId).then(function (exports) {
                     var panel = new exports.AuthorizationManagerPanel();
 
                     self.authorizationManagerPanel = panel;

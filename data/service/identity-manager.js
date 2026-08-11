@@ -119,7 +119,7 @@ IdentityManager = Montage.specialize( /** @lends AuthorizationService.prototype 
                 this._managerPanelPromise = Promise.resolve(this.authenticationManagerPanel);
             } else if (!this._managerPanelPromise) {
                 moduleId = this.callDelegateMethod("identityManagerWillLoadAuthenticationManagerPanel", this, this.authenticationManagerPanelModule) || this.authenticationManagerPanelModule;
-                this._managerPanelPromise = require.async(moduleId).bind(this).then(function (exports) {
+                this._managerPanelPromise = require.async(moduleId).then(function (exports) {
                     var panel = new exports.AuthenticationManagerPanel();
 
                     self.authenticationManagerPanel = panel;
