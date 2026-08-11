@@ -4,12 +4,6 @@ var Promise = require("../promise").Promise,
 
 exports.ModelReference = RemoteReference.specialize({
 
-    constructor: {
-        value: function ModelReference() {
-            this.superForValue("constructor")();
-        }
-    },
-
     /**
      * The identifier is the name of the object model and is used to make the
      * serialization of object models more readable.

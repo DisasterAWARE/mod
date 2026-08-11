@@ -409,7 +409,7 @@ RawDataService.addClassProperties({
 
     deserializeSelf: {
         value: function (deserializer) {
-            this.super(deserializer);
+            DataService.prototype.deserializeSelf.call(this, deserializer);
             this._ensureRawDataServiceMaps();
             var value = deserializer.getProperty("rawDataTypeMappings");
             this._registerRawDataTypeMappings(value || []);

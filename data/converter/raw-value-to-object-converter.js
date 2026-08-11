@@ -29,7 +29,7 @@ exports.RawValueToObjectConverter = ExpressionConverter.specialize( /** @lends R
     serializeSelf: {
         value: function (serializer) {
 
-            this.super(serializer);
+            ExpressionConverter.prototype.serializeSelf.call(this, serializer);
 
             // serializer.setProperty("convertExpression", this.convertExpression);
 
@@ -48,8 +48,9 @@ exports.RawValueToObjectConverter = ExpressionConverter.specialize( /** @lends R
 
     deserializeSelf: {
         value: function (deserializer) {
+            var value;
 
-            this.super(deserializer);
+            ExpressionConverter.prototype.deserializeSelf.call(this, deserializer);
 
             // var value = deserializer.getProperty("convertExpression");
             // if (value) {

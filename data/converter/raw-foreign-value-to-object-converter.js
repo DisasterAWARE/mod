@@ -29,7 +29,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
     serializeSelf: {
         value: function (serializer) {
 
-            this.super(serializer);
+            RawValueToObjectConverter.prototype.serializeSelf.call(this, serializer);
 
             serializer.setProperty("combinesFetchData", this.combinesFetchData);
             
@@ -40,7 +40,7 @@ exports.RawForeignValueToObjectConverter = RawValueToObjectConverter.specialize(
     deserializeSelf: {
         value: function (deserializer) {
 
-            this.super(deserializer);
+            RawValueToObjectConverter.prototype.deserializeSelf.call(this, deserializer);
 
             var value = deserializer.getProperty("combinesFetchData");
             if (value !== undefined) {
