@@ -1,0 +1,7 @@
+{
+    "name": "transitive",
+    "main": "index",
+    "mappings": {
+        "explicit": "../mapped-explicit-shadow"
+    }
+}

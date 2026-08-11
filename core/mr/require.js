@@ -306,6 +306,9 @@ function locationByRemovingLastURLComponentKeepingSlash(location) {
                 location: dependency
             };
         }
+        if (!dependency.name && name) {
+            dependency.name = name;
+        }
         if (dependency.main) {
             dependency.location = config.mainPackageLocation;
         } else if (dependency.name) {
@@ -314,7 +317,7 @@ function locationByRemovingLastURLComponentKeepingSlash(location) {
             // TODO this has to add a test on version
             if (config.registry && config.registry.has(dependency.name)) {
                 dependency.location = config.registry.get(dependency.name);
-            } else if (config.packageLock) {
+            } else if (!dependency.location && config.packageLock) {
                 //There's a bug in node where config.location starts with file://
                 //and config.mainPackageLocation doesn't.
                 //So looking for lastIndexOf() then adding length to workaround,
@@ -387,10 +390,6 @@ function locationByRemovingLastURLComponentKeepingSlash(location) {
                 config.location,
                 dependency.location
             );
-        }
-
-        if(!dependency.name && name) {
-            dependency.name = name;
         }
 
         // register the package name so the location can be reused

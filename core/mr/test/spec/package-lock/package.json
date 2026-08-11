@@ -1,6 +1,18 @@
 {
 	"_args": [],
+    "mappings": {
+        "explicit": {
+            "name": "explicit",
+            "location": "mapped-explicit"
+        },
+        "transitive": {
+            "name": "transitive",
+            "location": "mapped-transitive"
+        }
+    },
     "dependencies": {
+        "explicit": "1",
+        "transitive": "1",
         "http-server": "1",
         "url": "2"
     }
