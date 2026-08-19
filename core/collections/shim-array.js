@@ -33,12 +33,21 @@ if(!Array.nativeFrom ) {
 // }
 var isSymbolDefined = typeof Symbol !== "undefined";
 Array.from = function (values, mapFn, thisArg) {
-    if(isSymbolDefined && values && (typeof values[Symbol.iterator] === "function" || typeof mapFn === "function")) {
+    if (values && ((isSymbolDefined && typeof values[Symbol.iterator] === "function") ||
+            typeof values.length === "number")) {
         return Array.nativeFrom(values, mapFn, thisArg);
     }
     //Now we add support for values that implement forEach:
-    var array = [];
-    array.addEach(values);
+    var array = [],
+        index = 0;
+    if (values && typeof values.forEach === "function") {
+        values.forEach(function (value) {
+            array.push(typeof mapFn === "function" ?
+                mapFn.call(thisArg, value, index++) : value);
+        });
+    } else {
+        array.addEach(values);
+    }
     return array;
 };
 

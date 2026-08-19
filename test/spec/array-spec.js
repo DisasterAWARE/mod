@@ -32,6 +32,40 @@ var Montage = require("mod/core/core").Montage;
 
 describe("array-spec", function () {
 
+    describe("Array.from", function () {
+
+        it("supports forEach collections that ignore the callback thisArg", function () {
+            var values = {
+                    forEach: function (callback) {
+                        callback("alpha");
+                        callback("beta");
+                    }
+                };
+
+            expect(Array.from(values)).toEqual(["alpha", "beta"]);
+        });
+
+        it("maps forEach collections with the supplied thisArg", function () {
+            var values = {
+                    forEach: function (callback) {
+                        callback("alpha");
+                        callback("beta");
+                    }
+                },
+                context = {prefix: "item-"};
+
+            expect(Array.from(values, function (value, index) {
+                return this.prefix + index + "-" + value;
+            }, context)).toEqual(["item-0-alpha", "item-1-beta"]);
+        });
+
+        it("preserves native mapping for array-like values", function () {
+            expect(Array.from({0: "alpha", 1: "beta", length: 2}, function (value) {
+                return value.toUpperCase();
+            })).toEqual(["ALPHA", "BETA"]);
+        });
+    });
+
     describe("mutator methods", function () {
 
         describe("when pushing", function () {
