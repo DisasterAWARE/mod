@@ -2222,7 +2222,7 @@ RawDataService.addClassProperties({
 
             //console.log("rawDataDone for "+stream.query.type.name);
 
-            dataReadyPromise.then(function (results) {
+            return dataReadyPromise.then(function (results) {
                 // console.log("dataReadyPromise for "+stream.query.type.name);
                 return dataToPersist ? self.writeOfflineData(dataToPersist, stream.query, context) : null;
             }).then(function () {
@@ -2233,7 +2233,7 @@ RawDataService.addClassProperties({
                 stream.dataDone();
                 return null;
             }).catch(function (e) {
-                console.error(e, stream);
+                stream.dataError(e);
             });
 
         }
