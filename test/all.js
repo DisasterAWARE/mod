@@ -71,6 +71,7 @@ module.exports = require("mod/testing/run")
         // Events
         { name: "spec/events/active-target-spec", node: false },
         { name: "spec/events/eventmanager-spec", node: false },
+        { name: "spec/events/pointer-input-spec", node: false },
         { name: "spec/events/mutable-event-spec", node: false },
         { name: "spec/events/object-hierarchy-spec", node: false },
         //

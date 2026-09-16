@@ -731,7 +731,11 @@ var TranslateComposer = exports.TranslateComposer = Composer.specialize(/** @len
             }
 
             if (event.pointerId !== void 0) {
-                this._cancel(event);
+                if (event.pointerId === this._observedPointer ||
+                    (this._observedPointer === this._MOUSE_POINTER && (event.pointerType === this._MOUSE_POINTER ||
+                        (window.MSPointerEvent && event.pointerType === window.MSPointerEvent.MSPOINTER_TYPE_MOUSE)))) {
+                    this._cancel(event);
+                }
 
             } else {
                 var touch = this._findObservedTouch(event.changedTouches);

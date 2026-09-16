@@ -2312,14 +2312,18 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                             (typeof MSPointerEvent !== "undefined" && typeof navigator !== "undefined" && navigator.msPointerEnabled)
                     ) {
                         Object.defineProperty(MutableEvent.prototype, "velocity", {
+                            configurable: true,
                             get: function () {
-                                return defaultEventManager.pointerMotion(this.pointerId).velocity;
+                                var motion = defaultEventManager.pointerMotion(this.pointerId);
+                                return motion && motion.velocity;
                             }
                         });
                     } else if (typeof Touch !== "undefined") {
                         Object.defineProperty(Touch.prototype, "velocity", {
+                            configurable: true,
                             get: function () {
-                                return defaultEventManager.pointerMotion(this.identifier).velocity;
+                                var motion = defaultEventManager.pointerMotion(this.identifier);
+                                return motion && motion.velocity;
                             }
                         });
                     }
@@ -2399,16 +2403,13 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                 return (this.memory[identifier] && (this.memory[identifier].size > 0));
             },
             storeEvent: function (mutableEvent) {
-                var isBrowserSupportPointerEvents = currentEnvironment.isBrowserSupportPointerEvents,
-                    event = mutableEvent instanceof MutableEvent ? mutableEvent._event : mutableEvent,
-                    pointerType = event
-                                    ? event.pointerType
-                                    : null;
-                if(!pointerType) return;
+                var event = mutableEvent instanceof MutableEvent ? mutableEvent._event || mutableEvent : mutableEvent,
+                    isPointerEvent = event.pointerId !== void 0,
+                    pointerType = event.pointerType;
 
-                if ((isBrowserSupportPointerEvents &&
+                if ((isPointerEvent &&
                     (pointerType === "mouse" || (window.MSPointerEvent && pointerType === window.MSPointerEvent.MSPOINTER_TYPE_MOUSE))) ||
-                    (!isBrowserSupportPointerEvents && event instanceof MouseEvent)) {
+                    (!isPointerEvent && event instanceof MouseEvent)) {
 
                     switch (mutableEvent.type) {
                         case "pointerdown":
@@ -2435,9 +2436,10 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
                             this._storeMouse(mutableEvent);
                             break;
                     }
-                } else if ((isBrowserSupportPointerEvents &&
-                    (pointerType === "touch" || (window.MSPointerEvent && pointerType === window.MSPointerEvent.MSPOINTER_TYPE_TOUCH))) ||
-                    (window.TouchEvent !== void 0 && !isBrowserSupportPointerEvents && event instanceof TouchEvent)) {
+                } else if ((isPointerEvent &&
+                    (pointerType === "touch" || pointerType === "pen" || (window.MSPointerEvent &&
+                        (pointerType === window.MSPointerEvent.MSPOINTER_TYPE_TOUCH || pointerType === window.MSPointerEvent.MSPOINTER_TYPE_PEN)))) ||
+                    (window.TouchEvent !== void 0 && !isPointerEvent && event instanceof TouchEvent)) {
 
                     switch (event.type) {
                         case "pointerdown":
@@ -2462,25 +2464,29 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
             },
 
             removeEvent: function (mutableEvent) {
-                var isBrowserSupportPointerEvents = currentEnvironment.isBrowserSupportPointerEvents,
-                    event = mutableEvent instanceof MutableEvent ? mutableEvent._event : mutableEvent;
+                var event = mutableEvent instanceof MutableEvent ? mutableEvent._event || mutableEvent : mutableEvent,
+                    isPointerEvent = event.pointerId !== void 0,
+                    pointerType = event.pointerType;
 
-                if ((isBrowserSupportPointerEvents &&
-                    (mutableEvent.pointerType === "mouse" || (window.MSPointerEvent && mutableEvent.pointerType === window.MSPointerEvent.MSPOINTER_TYPE_MOUSE))) ||
-                    (!isBrowserSupportPointerEvents && event instanceof MouseEvent)) {
+                if ((isPointerEvent &&
+                    (pointerType === "mouse" || (window.MSPointerEvent && pointerType === window.MSPointerEvent.MSPOINTER_TYPE_MOUSE))) ||
+                    (!isPointerEvent && event instanceof MouseEvent)) {
 
-                    if (mutableEvent.type === "mouseup" || mutableEvent.type === "pointerup" || mutableEvent.type === "MSPointerUp") {
+                    if (mutableEvent.type === "mouseup" || mutableEvent.type === "pointerup" || mutableEvent.type === "MSPointerUp" ||
+                        mutableEvent.type === "pointercancel" || mutableEvent.type === "MSPointerCancel") {
                         defaultEventManager._isMouseDragging = false;
 
                         if (defaultEventManager._isStoringMouseEventsWhileDraggingOnly) {
                             this.clear("mouse");
                         }
                     }
-                } else if ((isBrowserSupportPointerEvents &&
-                    (mutableEvent.pointerType === "touch" || (window.MSPointerEvent && mutableEvent.pointerType === window.MSPointerEvent.MSPOINTER_TYPE_TOUCH))) ||
-                    (window.TouchEvent !== void 0 && !isBrowserSupportPointerEvents && event instanceof TouchEvent)) {
+                } else if ((isPointerEvent &&
+                    (pointerType === "touch" || pointerType === "pen" || (window.MSPointerEvent &&
+                        (pointerType === window.MSPointerEvent.MSPOINTER_TYPE_TOUCH || pointerType === window.MSPointerEvent.MSPOINTER_TYPE_PEN)))) ||
+                    (window.TouchEvent !== void 0 && !isPointerEvent && event instanceof TouchEvent)) {
 
-                    if (mutableEvent.type === "touchend" || mutableEvent.type === "pointerup" || mutableEvent.type === "MSPointerUp") {
+                    if (mutableEvent.type === "touchend" || mutableEvent.type === "touchcancel" || mutableEvent.type === "pointerup" || mutableEvent.type === "MSPointerUp" ||
+                        mutableEvent.type === "pointercancel" || mutableEvent.type === "MSPointerCancel") {
                         if (mutableEvent.changedTouches) {
                             for (var i = 0, changedTouches = mutableEvent.changedTouches, iChangedTouch; (iChangedTouch = changedTouches[i]); i++) {
                                 this.remove(iChangedTouch.identifier);
@@ -2501,7 +2507,8 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
 
                 Object.defineProperty(event, "velocity", {
                     get: function () {
-                        return defaultEventManager.pointerMotion("mouse").velocity;
+                        var motion = defaultEventManager.pointerMotion("mouse");
+                        return motion && motion.velocity;
                     }
                 });
             },
