@@ -130,6 +130,7 @@ module.exports = require("mod/testing/run")
         { name: "spec/data/data-property-descriptor" },
         { name: "spec/data/data-provider" },
         { name: "spec/data/data-service" },
+        { name: "spec/data/property-fetch-routing-spec" },
         { name: "spec/data/data-stream" },
         { name: "spec/data/expression-data-mapping" },
         { name: "spec/data/enumeration" },

@@ -2577,8 +2577,9 @@ DataService.addClassProperties(
                         (!childServices || childServices.length === 0 || localDelegateFunction ||
                             (mappingRule && !mappingRule.serviceIdentifier)),
                     isHandler = shouldHandleLocally,
-                    useDelegate = isHandler && hasFetchRawObjectProperty && !isRelationshipProperty,
-                    delegateFunction = !useDelegate && isHandler && localDelegateFunction,
+                    delegateFunction = isHandler && localDelegateFunction,
+                    useRawPropertyFetch = isHandler && !delegateFunction &&
+                        hasFetchRawObjectProperty && !isRelationshipProperty,
                     childService = !isHandler && this._getChildServiceForObject(object),
                     isObjectCreated = this.isObjectCreated(object),
                     debug = exports.DataService.debugProperties.has(propertyName);
@@ -2598,12 +2599,13 @@ DataService.addClassProperties(
                     !isRelationshipProperty &&
                     !mappingRule &&
                     !delegateFunction &&
-                    !hasFetchRawObjectProperty
+                    !hasFetchRawObjectProperty &&
+                    !(childService && childService._delegateFunctionForPropertyName(propertyName))
                 ) {
                     return this.nullPromise;
                 }
 
-                return useDelegate
+                return useRawPropertyFetch
                     ? this.fetchRawObjectProperty(object, propertyName)
                     : delegateFunction
                     ? delegateFunction.call(this, object)
