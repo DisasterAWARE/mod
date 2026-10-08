@@ -1879,6 +1879,17 @@ var EventManager = exports.EventManager = Montage.specialize(/** @lends EventMan
             */
 
             if (listenerTarget && (!registeredTargetForActivation || (registeredTargetForActivation && ((registeredTargetForActivation !== listenerTarget) && (registeredTargetForActivation.document !== listenerTarget)))) ) {
+                // Delegated DOM events share one native listener across targets.
+                // Keep it while another target still has registered listeners.
+                for (var registration of this._targetEventListeners) {
+                    var remainingTarget = registration[0],
+                        remainingListeners = registration[1].get(eventType);
+                    if (remainingListeners &&
+                        (remainingListeners.get(Event_CAPTURING_PHASE) || remainingListeners.get(Event_BUBBLING_PHASE)) &&
+                        this.actualDOMTargetForEventTypeOnTarget(eventType, remainingTarget) === listenerTarget) {
+                        return;
+                    }
+                }
                 this._observedTarget_byEventType_[eventType].delete(listenerTarget);
                 listenerTarget.nativeRemoveEventListener(eventType, this, true);
             }

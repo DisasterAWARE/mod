@@ -1172,7 +1172,7 @@ RawDataService.addClassProperties({
     resetDataObject: {
         value: function (object) {
             var snapshot = this.snapshotForObject(object),
-                result = this._mapRawDataToObject(snapshot, object);
+                result = this._mapRawDataToObject(snapshot, object, undefined, undefined, false, undefined, true);
             return result || Promise.resolve(object);
         }
     },
@@ -2562,7 +2562,7 @@ RawDataService.addClassProperties({
     },
 
     _mapRawDataToObject: {
-        value: function (record, object, context, readExpressions, registerMappedPropertiesAsChanged = false, objectDescriptor) {
+        value: function (record, object, context, readExpressions, registerMappedPropertiesAsChanged = false, objectDescriptor, isResettingObject = false) {
             var self = this,
                 mapping = objectDescriptor && this.mappingForType(objectDescriptor) || this.mappingForObject(object),
                 snapshot,
@@ -2597,7 +2597,8 @@ RawDataService.addClassProperties({
                 //if(Object.equals(snapshot,record) ) {
 
                 //Replacing with:
-                if (this._objectsBeingMapped.has(object)) {
+                // A reset must restore the snapshot even while an unrelated property is being mapped.
+                if (!isResettingObject && this._objectsBeingMapped.has(object)) {
                     return Promise.resolve(object);
 
                     // if(this._objectsBeingMapped.has(object)) {
